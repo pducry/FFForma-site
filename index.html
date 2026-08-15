@@ -731,6 +731,24 @@
       background: var(--btn-primary-hover);
     }
 
+    .form-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-error {
+      display: none;
+      margin-top: 0.8rem;
+      font-size: 0.78rem;
+      color: #b42318;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .form-error.is-visible {
+      display: block;
+    }
+
     .form-footer {
       text-align: center;
       margin-top: 1rem;
@@ -1007,6 +1025,7 @@
       </div>
 
       <button type="submit" class="form-submit">Send message</button>
+      <div class="form-error" id="formError" role="alert" aria-live="polite"></div>
 
       <div class="form-footer">
         Terms of Service | Privacy Policy
@@ -1134,8 +1153,41 @@ Cal("ui", {
   });
 
   // Form submission via fetch (no redirect)
+  const formError = document.getElementById('formError');
+  const submitBtn = projectForm.querySelector('.form-submit');
+  const GENERIC_FORM_ERROR = 'Something went wrong. Please try again or book a call.';
+
+  function isFormSubmitSuccess(res, result) {
+    if (!res || !res.ok || !result) return false;
+    return result.success === true || result.success === 'true';
+  }
+
+  function showFormError(message) {
+    formError.textContent = message || GENERIC_FORM_ERROR;
+    formError.classList.add('is-visible');
+  }
+
+  function clearFormError() {
+    formError.textContent = '';
+    formError.classList.remove('is-visible');
+  }
+
+  function resetFormUi() {
+    projectForm.style.display = '';
+    formSuccess.classList.remove('is-visible');
+    projectForm.reset();
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('typeOfWork').value = '';
+    document.getElementById('budgetField').value = '';
+    clearFormError();
+    submitBtn.disabled = false;
+  }
+
   projectForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    clearFormError();
+    submitBtn.disabled = true;
+
     const formData = new FormData(projectForm);
     const data = Object.fromEntries(formData.entries());
 
@@ -1148,29 +1200,34 @@ Cal("ui", {
         },
         body: JSON.stringify(data)
       });
-      const result = await res.json();
-      console.log('FormSubmit response:', result);
+
+      let result = null;
+      try {
+        result = await res.json();
+      } catch (_) {
+        result = null;
+      }
+
+      if (!isFormSubmitSuccess(res, result)) {
+        const message = (result && result.message) ? String(result.message) : GENERIC_FORM_ERROR;
+        throw new Error(message);
+      }
+
+      // Show success only after a confirmed FormSubmit acceptance
+      projectForm.style.display = 'none';
+      formSuccess.classList.add('is-visible');
+
+      // Auto-close after 3s
+      setTimeout(() => {
+        formModal.classList.remove('is-open');
+        // Reset for next open
+        setTimeout(resetFormUi, 300);
+      }, 3000);
     } catch (err) {
       console.error('FormSubmit error:', err);
+      showFormError(err && err.message ? err.message : GENERIC_FORM_ERROR);
+      submitBtn.disabled = false;
     }
-
-    // Show success
-    projectForm.style.display = 'none';
-    formSuccess.classList.add('is-visible');
-
-    // Auto-close after 3s
-    setTimeout(() => {
-      formModal.classList.remove('is-open');
-      // Reset for next open
-      setTimeout(() => {
-        projectForm.style.display = '';
-        formSuccess.classList.remove('is-visible');
-        projectForm.reset();
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
-        document.getElementById('typeOfWork').value = '';
-        document.getElementById('budgetField').value = '';
-      }, 300);
-    }, 3000);
   });
 
   // ─── Hero Showcase Slideshow ───
