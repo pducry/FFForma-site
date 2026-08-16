@@ -123,9 +123,12 @@
       width: var(--m-size, 72px);
       aspect-ratio: 1;
       border-radius: 50%;
-      cursor: pointer;
+      cursor: grab;
+      touch-action: none;
       will-change: transform;
     }
+
+    .m-avatar:active { cursor: grabbing; }
 
     .m-avatar .photo {
       position: absolute;
@@ -198,6 +201,21 @@
       transition: opacity 0.2s ease;
       pointer-events: none;
     }
+
+    /* Dotted floor appears when gravity is on */
+    .stage::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-bottom: 1px dotted var(--line);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .stage.has-gravity::after { opacity: 1; }
 
     .stage-hint {
       font-size: 0.72rem;
@@ -376,7 +394,7 @@
     <a href="../../">&larr; FFForma</a>
     <p class="exp-eyebrow">FFForma Experiments · UI · 005</p>
     <h1>Magnetic Avatar</h1>
-    <p class="exp-sub">Avatars with a magnetic field. Move the cursor close and watch them lean in.</p>
+    <p class="exp-sub">Orbs with a magnetic field. Attract them, grab them, throw them — or switch gravity on.</p>
   </header>
 
   <!-- Tabs -->
@@ -431,6 +449,14 @@
         <label>Parallax <span class="val" data-val="parallax">0.50</span></label>
         <input type="range" data-param="parallax" min="0" max="1" step="0.05" value="0.5">
       </div>
+      <div class="ctl">
+        <label>Gravity <span class="val" data-val="gravity">0.00</span></label>
+        <input type="range" data-param="gravity" min="0" max="1" step="0.05" value="0">
+      </div>
+      <div class="ctl">
+        <label>Bounce <span class="val" data-val="bounce">0.55</span></label>
+        <input type="range" data-param="bounce" min="0.2" max="0.9" step="0.05" value="0.55">
+      </div>
     </div>
   </div>
 
@@ -475,7 +501,7 @@
     return 'rgba(' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(', ') + ', ' + alpha + ')';
   }
 
-  const DEFAULTS = { size: 72, strength: 24, radius: 140, stiffness: 0.12, damping: 0.82, scale: 1.12, parallax: 0.5 };
+  const DEFAULTS = { size: 72, strength: 24, radius: 140, stiffness: 0.12, damping: 0.82, scale: 1.12, parallax: 0.5, gravity: 0, bounce: 0.55 };
   const params = { ...DEFAULTS };
   let polarity = 1; // 1 attract, -1 repel
 
@@ -522,11 +548,31 @@
     cursor.y = -9999;
   });
 
-  // Spring physics loop
+  // Drag: grab an orb, throw it — velocity carries through the release
+  nodes.forEach(n => {
+    n.dragging = false;
+    n.el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      n.el.setPointerCapture(e.pointerId);
+      n.dragging = true;
+      cursor.x = e.clientX;
+      cursor.y = e.clientY;
+    });
+    n.el.addEventListener('pointermove', (e) => {
+      if (n.dragging) { cursor.x = e.clientX; cursor.y = e.clientY; }
+    });
+    const release = () => { n.dragging = false; };
+    n.el.addEventListener('pointerup', release);
+    n.el.addEventListener('pointercancel', release);
+  });
+
+  // Physics loop: elastic drag > gravity field > magnetic spring
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function tick() {
     let captured = null;
+    let held = null;
+    const sr = stage.getBoundingClientRect();
 
     nodes.forEach(n => {
       const r = n.el.getBoundingClientRect();
@@ -540,35 +586,72 @@
       let prox = 0;
       if (dist < params.radius && dist > 0.001) {
         prox = 1 - dist / params.radius;
-        const pull = prox * params.strength * polarity;
-        n.tx = (dx / dist) * pull;
-        n.ty = (dy / dist) * pull;
-      } else {
-        n.tx = 0;
-        n.ty = 0;
       }
       n.prox = prox;
 
-      // Integrate spring
-      n.vx = (n.vx + (n.tx - n.x) * params.stiffness) * params.damping;
-      n.vy = (n.vy + (n.ty - n.y) * params.stiffness) * params.damping;
-      n.x += n.vx;
-      n.y += n.vy;
+      if (n.dragging) {
+        // Elastic grab: a stiff spring toward the cursor keeps it juicy
+        n.vx = (n.vx + ((cursor.x - cx) - n.x) * 0.3) * 0.72;
+        n.vy = (n.vy + ((cursor.y - cy) - n.y) * 0.3) * 0.72;
+        n.x += n.vx;
+        n.y += n.vy;
+        held = n;
+      } else if (params.gravity > 0) {
+        // Free bodies: gravity + magnet as forces, walls that bounce
+        n.vy += params.gravity * 0.55;
+        if (prox > 0 && dist > 0.001) {
+          const f = prox * params.strength * 0.02 * polarity;
+          n.vx += (dx / dist) * f;
+          n.vy += (dy / dist) * f;
+        }
+        n.vx *= 0.995;
+        n.vy *= 0.995;
+        n.x += n.vx;
+        n.y += n.vy;
 
-      const s = 1 + prox * (params.scale - 1);
+        const half = params.size / 2 + 2;
+        const minX = sr.left + half - cx, maxX = sr.right - half - cx;
+        const minY = sr.top + half - cy, maxY = sr.bottom - half - cy;
+        if (n.x < minX) { n.x = minX; n.vx = -n.vx * params.bounce; }
+        if (n.x > maxX) { n.x = maxX; n.vx = -n.vx * params.bounce; }
+        if (n.y < minY) { n.y = minY; n.vy = -n.vy * params.bounce; }
+        if (n.y > maxY) {
+          n.y = maxY;
+          n.vy = -n.vy * params.bounce;
+          n.vx *= 0.94; // floor friction
+        }
+      } else {
+        // Magnetic spring to a pulled target, anchored home
+        let tx = 0, ty = 0;
+        if (prox > 0 && dist > 0.001) {
+          const pull = prox * params.strength * polarity;
+          tx = (dx / dist) * pull;
+          ty = (dy / dist) * pull;
+        }
+        n.vx = (n.vx + (tx - n.x) * params.stiffness) * params.damping;
+        n.vy = (n.vy + (ty - n.y) * params.stiffness) * params.damping;
+        n.x += n.vx;
+        n.y += n.vy;
+      }
+
+      const s = n.dragging ? params.scale : 1 + prox * (params.scale - 1);
       n.el.style.transform = 'translate(' + n.x.toFixed(2) + 'px, ' + n.y.toFixed(2) + 'px) scale(' + s.toFixed(3) + ')';
-      // The photo lags behind — depth
-      n.img.style.transform = 'translate(' + (-n.x * params.parallax).toFixed(2) + 'px, ' + (-n.y * params.parallax).toFixed(2) + 'px)';
-      n.ring.style.opacity = (prox * 0.9).toFixed(2);
-      n.field.style.opacity = prox > 0.55 ? '0.6' : '0';
-      n.label.style.opacity = prox > 0.55 ? '1' : '0';
+      // The core lags behind — depth
+      n.img.style.transform = 'translate(' + (-n.x * params.parallax * 0.35).toFixed(2) + 'px, ' + (-n.y * params.parallax * 0.35).toFixed(2) + 'px)';
+      n.ring.style.opacity = (n.dragging ? 0.9 : prox * 0.9).toFixed(2);
+      n.field.style.opacity = (n.dragging || prox > 0.55) ? '0.6' : '0';
+      n.label.style.opacity = (n.dragging || prox > 0.55) ? '1' : '0';
 
       if (prox > 0.55 && (!captured || prox > captured.prox)) captured = n;
     });
 
-    stageHint.innerHTML = captured
-      ? '( <span class="on">' + captured.label.textContent + '</span> captured )'
-      : '( bring the cursor near )';
+    stageHint.innerHTML = held
+      ? '( <span class="on">' + held.label.textContent + '</span> in hand — throw it )'
+      : captured
+        ? '( <span class="on">' + captured.label.textContent + '</span> captured )'
+        : params.gravity > 0
+          ? '( gravity on — grab and throw )'
+          : '( bring the cursor near — or grab an orb )';
 
     requestAnimationFrame(tick);
   }
@@ -583,6 +666,7 @@
 
   function apply() {
     document.documentElement.style.setProperty('--m-size', params.size + 'px');
+    stage.classList.toggle('has-gravity', params.gravity > 0);
     document.querySelectorAll('.val').forEach(v => { v.textContent = fmt(v.dataset.val); });
     document.getElementById('cssCode').textContent = cssCode();
     document.getElementById('reactCode').textContent = reactCode();
@@ -693,13 +777,16 @@
       "  colors = ['#c8ff00', '#e8e6e2', '#3a4d00'], // orb palette [a, b, c]",
       '  spin = 9,          // seconds per core revolution',
       '  size = ' + params.size + ',',
-      '  strength = ' + params.strength + ',    // max pull, px',
-      '  radius = ' + params.radius + ',      // magnetic field radius, px',
+      '  strength = ' + params.strength + ',    // max magnetic pull, px',
+      '  radius = ' + params.radius + ',      // field radius, px',
       '  stiffness = ' + params.stiffness + ',',
       '  damping = ' + params.damping + ',',
       '  hoverScale = ' + params.scale + ',',
-      '  parallax = ' + params.parallax + ',    // photo counter-shift (0-1)',
+      '  parallax = ' + params.parallax + ',',
       '  polarity = ' + polarity + ',      // 1 attracts, -1 repels',
+      '  gravity = ' + params.gravity + ',       // > 0 turns the orb into a free body',
+      '  bounce = ' + params.bounce + ',    // wall restitution in gravity mode',
+      '  draggable = true,  // grab and throw with pointer',
       '}) {',
       '  const rootRef = useRef(null);',
       '  const innerRef = useRef(null);',
@@ -709,53 +796,98 @@
       '    const root = rootRef.current;',
       '    const inner = innerRef.current;',
       '    const ring = ringRef.current;',
-      '    const s = { x: 0, y: 0, vx: 0, vy: 0 };',
+      '    const bounds = root.offsetParent; // gravity bounces inside this box',
+      '    const st = { x: 0, y: 0, vx: 0, vy: 0, drag: false };',
       '    const cursor = { x: -9999, y: -9999 };',
       '    let raf;',
       '',
       '    const onMove = (e) => { cursor.x = e.clientX; cursor.y = e.clientY; };',
       '    const onLeave = () => { cursor.x = -9999; cursor.y = -9999; };',
+      '    const onDown = (e) => {',
+      '      if (!draggable) return;',
+      '      e.preventDefault();',
+      '      root.setPointerCapture(e.pointerId);',
+      '      st.drag = true;',
+      '      onMove(e);',
+      '    };',
+      '    const onUp = () => { st.drag = false; };',
       '',
       '    const tick = () => {',
       '      const r = root.getBoundingClientRect();',
-      '      const cx = r.left + r.width / 2 - s.x;',
-      '      const cy = r.top + r.height / 2 - s.y;',
+      '      const cx = r.left + r.width / 2 - st.x;',
+      '      const cy = r.top + r.height / 2 - st.y;',
       '      const dx = cursor.x - cx;',
       '      const dy = cursor.y - cy;',
       '      const dist = Math.hypot(dx, dy);',
+      '      const prox = dist < radius && dist > 0.001 ? 1 - dist / radius : 0;',
       '',
-      '      let tx = 0, ty = 0, prox = 0;',
-      '      if (dist < radius && dist > 0.001) {',
-      '        prox = 1 - dist / radius;',
-      '        const pull = prox * strength * polarity;',
-      '        tx = (dx / dist) * pull;',
-      '        ty = (dy / dist) * pull;',
+      '      if (st.drag) {',
+      '        // Elastic grab — stiff spring toward the cursor',
+      '        st.vx = (st.vx + (dx - st.x) * 0.3) * 0.72;',
+      '        st.vy = (st.vy + (dy - st.y) * 0.3) * 0.72;',
+      '        st.x += st.vx;',
+      '        st.y += st.vy;',
+      '      } else if (gravity > 0) {',
+      '        // Free body: gravity + magnet as forces, bouncing walls',
+      '        st.vy += gravity * 0.55;',
+      '        if (prox > 0) {',
+      '          const f = prox * strength * 0.02 * polarity;',
+      '          st.vx += (dx / dist) * f;',
+      '          st.vy += (dy / dist) * f;',
+      '        }',
+      '        st.vx *= 0.995;',
+      '        st.vy *= 0.995;',
+      '        st.x += st.vx;',
+      '        st.y += st.vy;',
+      '        const b = bounds.getBoundingClientRect();',
+      '        const half = size / 2 + 2;',
+      '        if (st.x < b.left + half - cx)  { st.x = b.left + half - cx;  st.vx = -st.vx * bounce; }',
+      '        if (st.x > b.right - half - cx) { st.x = b.right - half - cx; st.vx = -st.vx * bounce; }',
+      '        if (st.y < b.top + half - cy)   { st.y = b.top + half - cy;   st.vy = -st.vy * bounce; }',
+      '        if (st.y > b.bottom - half - cy) {',
+      '          st.y = b.bottom - half - cy;',
+      '          st.vy = -st.vy * bounce;',
+      '          st.vx *= 0.94; // floor friction',
+      '        }',
+      '      } else {',
+      '        // Magnetic spring, anchored home',
+      '        let tx = 0, ty = 0;',
+      '        if (prox > 0) {',
+      '          const pull = prox * strength * polarity;',
+      '          tx = (dx / dist) * pull;',
+      '          ty = (dy / dist) * pull;',
+      '        }',
+      '        st.vx = (st.vx + (tx - st.x) * stiffness) * damping;',
+      '        st.vy = (st.vy + (ty - st.y) * stiffness) * damping;',
+      '        st.x += st.vx;',
+      '        st.y += st.vy;',
       '      }',
       '',
-      '      s.vx = (s.vx + (tx - s.x) * stiffness) * damping;',
-      '      s.vy = (s.vy + (ty - s.y) * stiffness) * damping;',
-      '      s.x += s.vx;',
-      '      s.y += s.vy;',
-      '',
-      '      const scale = 1 + prox * (hoverScale - 1);',
-      '      root.style.transform = `translate(${s.x}px, ${s.y}px) scale(${scale})`;',
-      '      inner.style.transform = `translate(${-s.x * parallax}px, ${-s.y * parallax}px)`;',
-      '      ring.style.opacity = prox * 0.9;',
+      '      const scale = st.drag ? hoverScale : 1 + prox * (hoverScale - 1);',
+      '      root.style.transform = `translate(${st.x}px, ${st.y}px) scale(${scale})`;',
+      '      inner.style.transform = `translate(${-st.x * parallax * 0.35}px, ${-st.y * parallax * 0.35}px)`;',
+      '      ring.style.opacity = st.drag ? 0.9 : prox * 0.9;',
       '      raf = requestAnimationFrame(tick);',
       '    };',
       '',
       '    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {',
       '      window.addEventListener("pointermove", onMove);',
       '      window.addEventListener("pointerleave", onLeave);',
+      '      root.addEventListener("pointerdown", onDown);',
+      '      root.addEventListener("pointerup", onUp);',
+      '      root.addEventListener("pointercancel", onUp);',
       '      raf = requestAnimationFrame(tick);',
       '    }',
       '',
       '    return () => {',
       '      window.removeEventListener("pointermove", onMove);',
       '      window.removeEventListener("pointerleave", onLeave);',
+      '      root.removeEventListener("pointerdown", onDown);',
+      '      root.removeEventListener("pointerup", onUp);',
+      '      root.removeEventListener("pointercancel", onUp);',
       '      cancelAnimationFrame(raf);',
       '    };',
-      '  }, [strength, radius, stiffness, damping, hoverScale, parallax, polarity]);',
+      '  }, [strength, radius, stiffness, damping, hoverScale, parallax, polarity, gravity, bounce, draggable, size]);',
       '',
       '  const [a, b, c] = colors;',
       '  return (',
