@@ -553,7 +553,7 @@
     n.dragging = false;
     n.el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      n.el.setPointerCapture(e.pointerId);
+      try { n.el.setPointerCapture(e.pointerId); } catch (_) {}
       n.dragging = true;
       cursor.x = e.clientX;
       cursor.y = e.clientY;
@@ -574,13 +574,14 @@
     let held = null;
     const sr = stage.getBoundingClientRect();
 
+    // ── Pass 1: integrate each body ──
     nodes.forEach(n => {
       const r = n.el.getBoundingClientRect();
       // Rest center: remove current offset to keep the anchor stable
-      const cx = r.left + r.width / 2 - n.x;
-      const cy = r.top + r.height / 2 - n.y;
-      const dx = cursor.x - cx;
-      const dy = cursor.y - cy;
+      n.ax = r.left + r.width / 2 - n.x;
+      n.ay = r.top + r.height / 2 - n.y;
+      const dx = cursor.x - n.ax;
+      const dy = cursor.y - n.ay;
       const dist = Math.hypot(dx, dy);
 
       let prox = 0;
@@ -591,13 +592,13 @@
 
       if (n.dragging) {
         // Elastic grab: a stiff spring toward the cursor keeps it juicy
-        n.vx = (n.vx + ((cursor.x - cx) - n.x) * 0.3) * 0.72;
-        n.vy = (n.vy + ((cursor.y - cy) - n.y) * 0.3) * 0.72;
+        n.vx = (n.vx + ((cursor.x - n.ax) - n.x) * 0.3) * 0.72;
+        n.vy = (n.vy + ((cursor.y - n.ay) - n.y) * 0.3) * 0.72;
         n.x += n.vx;
         n.y += n.vy;
         held = n;
       } else if (params.gravity > 0) {
-        // Free bodies: gravity + magnet as forces, walls that bounce
+        // Free bodies: gravity + magnet as forces
         n.vy += params.gravity * 0.55;
         if (prox > 0 && dist > 0.001) {
           const f = prox * params.strength * 0.02 * polarity;
@@ -608,18 +609,6 @@
         n.vy *= 0.995;
         n.x += n.vx;
         n.y += n.vy;
-
-        const half = params.size / 2 + 2;
-        const minX = sr.left + half - cx, maxX = sr.right - half - cx;
-        const minY = sr.top + half - cy, maxY = sr.bottom - half - cy;
-        if (n.x < minX) { n.x = minX; n.vx = -n.vx * params.bounce; }
-        if (n.x > maxX) { n.x = maxX; n.vx = -n.vx * params.bounce; }
-        if (n.y < minY) { n.y = minY; n.vy = -n.vy * params.bounce; }
-        if (n.y > maxY) {
-          n.y = maxY;
-          n.vy = -n.vy * params.bounce;
-          n.vx *= 0.94; // floor friction
-        }
       } else {
         // Magnetic spring to a pulled target, anchored home
         let tx = 0, ty = 0;
@@ -634,15 +623,75 @@
         n.y += n.vy;
       }
 
-      const s = n.dragging ? params.scale : 1 + prox * (params.scale - 1);
+      if (prox > 0.55 && (!captured || prox > captured.prox)) captured = n;
+    });
+
+    // ── Pass 2: orb-to-orb collisions (two iterations for stable piles) ──
+    const R = params.size / 2 + 2;
+    const minD = R * 2;
+    for (let iter = 0; iter < 2; iter++) {
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const dx = (b.ax + b.x) - (a.ax + a.x);
+          const dy = (b.ay + b.y) - (a.ay + a.y);
+          const d = Math.hypot(dx, dy);
+          if (d >= minD || d < 0.0001) continue;
+
+          const nx = dx / d, ny = dy / d;
+          const overlap = minD - d;
+
+          // A dragged orb is kinematic: it shoves, it is not shoved
+          const invA = a.dragging ? 0 : 1;
+          const invB = b.dragging ? 0 : 1;
+          const invSum = invA + invB;
+          if (invSum === 0) continue;
+
+          // Positional correction, mass-weighted
+          a.x -= nx * overlap * (invA / invSum);
+          a.y -= ny * overlap * (invA / invSum);
+          b.x += nx * overlap * (invB / invSum);
+          b.y += ny * overlap * (invB / invSum);
+
+          // Impulse along the normal, only if approaching
+          const rvx = b.vx - a.vx;
+          const rvy = b.vy - a.vy;
+          const vn = rvx * nx + rvy * ny;
+          if (vn < 0) {
+            const e = params.gravity > 0 ? params.bounce : 0.4;
+            const jimp = -(1 + e) * vn / invSum;
+            a.vx -= jimp * nx * invA;
+            a.vy -= jimp * ny * invA;
+            b.vx += jimp * nx * invB;
+            b.vy += jimp * ny * invB;
+          }
+        }
+      }
+    }
+
+    // ── Pass 3: stage walls (gravity mode) + paint ──
+    nodes.forEach(n => {
+      if (!n.dragging && params.gravity > 0) {
+        const half = params.size / 2 + 2;
+        const minX = sr.left + half - n.ax, maxX = sr.right - half - n.ax;
+        const minY = sr.top + half - n.ay, maxY = sr.bottom - half - n.ay;
+        if (n.x < minX) { n.x = minX; n.vx = -n.vx * params.bounce; }
+        if (n.x > maxX) { n.x = maxX; n.vx = -n.vx * params.bounce; }
+        if (n.y < minY) { n.y = minY; n.vy = -n.vy * params.bounce; }
+        if (n.y > maxY) {
+          n.y = maxY;
+          n.vy = -n.vy * params.bounce;
+          n.vx *= 0.94; // floor friction
+        }
+      }
+
+      const s = n.dragging ? params.scale : 1 + n.prox * (params.scale - 1);
       n.el.style.transform = 'translate(' + n.x.toFixed(2) + 'px, ' + n.y.toFixed(2) + 'px) scale(' + s.toFixed(3) + ')';
       // The core lags behind — depth
       n.img.style.transform = 'translate(' + (-n.x * params.parallax * 0.35).toFixed(2) + 'px, ' + (-n.y * params.parallax * 0.35).toFixed(2) + 'px)';
-      n.ring.style.opacity = (n.dragging ? 0.9 : prox * 0.9).toFixed(2);
-      n.field.style.opacity = (n.dragging || prox > 0.55) ? '0.6' : '0';
-      n.label.style.opacity = (n.dragging || prox > 0.55) ? '1' : '0';
-
-      if (prox > 0.55 && (!captured || prox > captured.prox)) captured = n;
+      n.ring.style.opacity = (n.dragging ? 0.9 : n.prox * 0.9).toFixed(2);
+      n.field.style.opacity = (n.dragging || n.prox > 0.55) ? '0.6' : '0';
+      n.label.style.opacity = (n.dragging || n.prox > 0.55) ? '1' : '0';
     });
 
     stageHint.innerHTML = held
@@ -650,7 +699,7 @@
       : captured
         ? '( <span class="on">' + captured.label.textContent + '</span> captured )'
         : params.gravity > 0
-          ? '( gravity on — grab and throw )'
+          ? '( gravity on — grab, throw, collide )'
           : '( bring the cursor near — or grab an orb )';
 
     requestAnimationFrame(tick);
