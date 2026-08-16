@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Highlight on Scroll — FFForma Experiments</title>
+  <meta name="description" content="FFForma Experiment 002 — words light up as you read; the edge is the cursor.">
+  <meta name="theme-color" content="#0b0a09">
+  <link rel="icon" type="image/png" href="../../img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0a09;
+      --fg: #e8e6e2;
+      --subtle: #a3a09b;
+      --subtler: #55524d;
+      --line: #262421;
+      --accent: #c8ff00;
+      --font-mono: 'Geist Mono', 'Courier New', monospace;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    a {
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    a:hover { color: var(--accent); }
+
+    a:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    header { padding: 56px 0 0; }
+
+    .exp-eyebrow {
+      font-size: 0.72rem;
+      color: var(--subtler);
+      margin: 40px 0 6px;
+    }
+
+    h1 {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .exp-sub {
+      color: var(--subtle);
+      margin-top: 6px;
+    }
+
+    .scroll-hint {
+      font-size: 0.75rem;
+      color: var(--subtler);
+      text-align: center;
+      padding: 38vh 0 30vh;
+    }
+
+    /* ─── Manifesto ─── */
+    .manifesto {
+      font-size: 1.02rem;
+      line-height: 2;
+      padding-bottom: 45vh;
+    }
+
+    .manifesto p + p { margin-top: 1.6em; }
+
+    .manifesto .w {
+      color: var(--subtler);
+      transition: color 0.3s ease;
+    }
+
+    .manifesto .w.read { color: var(--fg); }
+
+    .manifesto .w.edge { color: var(--accent); }
+
+    .end-mark {
+      font-size: 0.75rem;
+      color: var(--subtler);
+      text-align: center;
+      padding-bottom: 20vh;
+    }
+
+    footer {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--subtler);
+      text-align: center;
+      padding: 0 0 32px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <a href="../../">&larr; FFForma</a>
+    <p class="exp-eyebrow">FFForma Experiments · UI · 002</p>
+    <h1>Text Highlight on Scroll</h1>
+    <p class="exp-sub">Words light up as you read. The edge is the cursor.</p>
+  </header>
+
+  <p class="scroll-hint">( scroll )</p>
+
+  <div class="manifesto" id="manifesto">
+    <p>Every idea arrives shapeless. It hums. It insists. It refuses to explain itself. The work begins there — in the fog before the form.</p>
+    <p>We listen until the idea admits what it wants to become. Sometimes a brand. Sometimes a website. Sometimes a product, a series, an experiment that leads nowhere and teaches everything.</p>
+    <p>We draw, we build, we throw away. We let machines carry what is heavy so our hands stay free for what is delicate. Speed is not the point. Attention is.</p>
+    <p>A form is finished when nothing else can be removed — when function shows through the surface like light through paper.</p>
+    <p>Then we ship it, and the idea stops being ours. It belongs to whoever holds it. That is the whole craft: give the thing its shape, then let it go.</p>
+  </div>
+
+  <p class="end-mark">( the end )</p>
+
+  <footer>Form Follows Function.</footer>
+</div>
+
+<script>
+  // Wrap every word in a span so each can light up on its own
+  const manifesto = document.getElementById('manifesto');
+  manifesto.querySelectorAll('p').forEach(p => {
+    p.innerHTML = p.textContent.split(' ').map(w => '<span class="w">' + w + '</span>').join(' ');
+  });
+
+  const words = manifesto.querySelectorAll('.w');
+  let ticking = false;
+
+  function paint() {
+    ticking = false;
+    // The reading line sits at 55% of the viewport
+    const focusY = window.innerHeight * 0.55;
+    let lastRead = -1;
+
+    words.forEach((w, i) => {
+      if (w.getBoundingClientRect().top < focusY) lastRead = i;
+    });
+
+    words.forEach((w, i) => {
+      w.classList.toggle('read', i <= lastRead);
+      w.classList.toggle('edge', i === lastRead);
+    });
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(paint);
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  paint();
+</script>
+
+</body>
+</html>
