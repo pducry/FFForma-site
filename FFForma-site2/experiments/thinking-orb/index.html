@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thinking Orb — FFForma Experiments</title>
+  <meta name="description" content="FFForma Experiment 004 — an AI thinking orb, fully parametric, with CSS and React output.">
+  <meta name="theme-color" content="#0b0a09">
+  <link rel="icon" type="image/png" href="../../img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0a09;
+      --fg: #e8e6e2;
+      --subtle: #a3a09b;
+      --subtler: #6f6c67;
+      --line: #262421;
+      --accent: #c8ff00;
+      --font-mono: 'Geist Mono', 'Courier New', monospace;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection { background: var(--accent); color: var(--bg); }
+
+    a {
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    a:hover { color: var(--accent); }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    header { padding: 56px 0 0; }
+
+    .exp-eyebrow {
+      font-size: 0.72rem;
+      color: var(--subtler);
+      margin: 40px 0 6px;
+    }
+
+    h1 { font-size: 0.95rem; font-weight: 500; }
+
+    .exp-sub { color: var(--subtle); margin-top: 6px; }
+
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 1.4em;
+      margin-top: 36px;
+      font-size: 0.78rem;
+    }
+
+    .tab {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtler);
+      transition: color 0.2s ease;
+    }
+
+    .tab:hover { color: var(--fg); }
+
+    .tab.active { color: var(--accent); }
+
+    .panel { display: none; }
+
+    .panel.active { display: block; }
+
+    /* ─── The orb ─── */
+    .orb {
+      position: relative;
+      width: var(--o-size, 220px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #050504;
+      box-shadow:
+        0 0 calc(var(--o-size, 220px) * 0.45) var(--o-glow-c, rgba(200, 255, 0, 0.35)),
+        inset 0 0 calc(var(--o-size, 220px) * 0.18) rgba(0, 0, 0, 0.65);
+    }
+
+    .orb::before {
+      content: '';
+      position: absolute;
+      inset: -30%;
+      background: conic-gradient(from 0deg, var(--o-a), var(--o-b), var(--o-c), var(--o-a));
+      filter: blur(var(--o-soften, 30px));
+      animation: orb-spin var(--o-speed, 10s) linear infinite;
+    }
+
+    .orb::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, var(--o-hl, 0.55)), transparent 46%);
+      mix-blend-mode: screen;
+    }
+
+    .orb .grain {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      opacity: var(--o-grain, 0.12);
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 140px 140px;
+      pointer-events: none;
+    }
+
+    @keyframes orb-spin { to { transform: rotate(360deg); } }
+
+    /* Thinking state: the spin quickens and the orb breathes */
+    .orb.is-thinking::before {
+      animation:
+        orb-spin calc(var(--o-speed, 10s) / 4) linear infinite;
+    }
+
+    .orb.is-thinking {
+      animation: orb-breathe 1.6s ease-in-out infinite;
+    }
+
+    @keyframes orb-breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.045); }
+    }
+
+    /* ─── Stage ─── */
+    .stage {
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 26px;
+      padding: 36px 0 8px;
+    }
+
+    .orb-wrap {
+      cursor: pointer;
+      animation: orb-bob 7s ease-in-out infinite;
+    }
+
+    @keyframes orb-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-9px); }
+    }
+
+    .orb-status {
+      font-size: 0.72rem;
+      color: var(--subtler);
+    }
+
+    .orb-status .on { color: var(--accent); }
+
+    /* ─── Presets: a shelf of live mini orbs ─── */
+    .presets {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 22px;
+      padding: 18px 0 6px;
+      flex-wrap: wrap;
+    }
+
+    .preset {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--subtler);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      transition: color 0.2s ease;
+    }
+
+    .preset:hover { color: var(--fg); }
+
+    .preset.active { color: var(--accent); }
+
+    .preset .orb {
+      --o-size: 38px;
+      --o-soften: 8px;
+      --o-hl: 0.5;
+      --o-grain: 0;
+      box-shadow: 0 0 18px var(--o-glow-c), inset 0 0 7px rgba(0, 0, 0, 0.65);
+      animation: orb-bob 5s ease-in-out infinite;
+      animation-delay: var(--d, 0s);
+    }
+
+    /* ─── Controls ─── */
+    .controls {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 36px;
+    }
+
+    @media (max-width: 560px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+
+    .ctl label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--subtle);
+      margin-bottom: 6px;
+    }
+
+    .ctl .val {
+      color: var(--subtler);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 16px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track { height: 1px; background: var(--line); }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--fg);
+      margin-top: -5.5px;
+      transition: background 0.15s ease;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:active::-webkit-slider-thumb { background: var(--accent); }
+
+    input[type="range"]::-moz-range-track { height: 1px; background: var(--line); }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border: none;
+      border-radius: 50%;
+      background: var(--fg);
+    }
+
+    input[type="range"]:hover::-moz-range-thumb { background: var(--accent); }
+
+    .color-row {
+      display: flex;
+      gap: 22px;
+    }
+
+    .color-ctl {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--subtle);
+    }
+
+    input[type="color"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 44px;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+    /* ─── Code panels ─── */
+    .code-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 28px 0 8px;
+    }
+
+    .code-label { font-size: 0.72rem; color: var(--subtler); }
+
+    .copy-btn {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    .copy-btn:hover { color: var(--accent); }
+
+    .toast {
+      font-size: 0.72rem;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      margin-left: 0.8em;
+    }
+
+    .toast.is-visible { opacity: 1; }
+
+    pre.code {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      line-height: 1.6;
+      color: var(--subtle);
+      background: #100f0d;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    footer {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--subtler);
+      text-align: center;
+      padding: 56px 0 32px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <a href="../../">&larr; FFForma</a>
+    <p class="exp-eyebrow">FFForma Experiments · UI · 004</p>
+    <h1>Thinking Orb</h1>
+    <p class="exp-sub">The face of an AI at work. Parametric, portable, alive.</p>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="preview" role="tab">Preview</button>
+    <button class="tab" data-tab="css" role="tab">CSS</button>
+    <button class="tab" data-tab="react" role="tab">React</button>
+  </div>
+
+  <!-- ─── Preview panel ─── -->
+  <div class="panel active" id="panel-preview">
+    <div class="stage">
+      <div class="orb-wrap" id="orbWrap">
+        <div class="orb" id="orb"><div class="grain"></div></div>
+      </div>
+      <p class="orb-status" id="orbStatus">( idle — click the orb )</p>
+    </div>
+
+    <!-- Presets: live mini orbs -->
+    <div class="presets" id="presets"></div>
+
+    <!-- Parameters -->
+    <div class="controls">
+      <div class="ctl" style="grid-column: 1 / -1;">
+        <div class="color-row">
+          <div class="color-ctl">A<input type="color" data-color="a" value="#c8ff00"></div>
+          <div class="color-ctl">B<input type="color" data-color="b" value="#4dd6ff"></div>
+          <div class="color-ctl">C<input type="color" data-color="c" value="#7a5cff"></div>
+        </div>
+      </div>
+      <div class="ctl">
+        <label>Size <span class="val" data-val="size">220px</span></label>
+        <input type="range" data-param="size" min="120" max="320" step="10" value="220">
+      </div>
+      <div class="ctl">
+        <label>Spin <span class="val" data-val="speed">10s</span></label>
+        <input type="range" data-param="speed" min="2" max="30" step="1" value="10">
+      </div>
+      <div class="ctl">
+        <label>Soften <span class="val" data-val="soften">30px</span></label>
+        <input type="range" data-param="soften" min="8" max="60" step="1" value="30">
+      </div>
+      <div class="ctl">
+        <label>Glow <span class="val" data-val="glow">0.35</span></label>
+        <input type="range" data-param="glow" min="0" max="0.8" step="0.05" value="0.35">
+      </div>
+      <div class="ctl">
+        <label>Highlight <span class="val" data-val="hl">0.55</span></label>
+        <input type="range" data-param="hl" min="0" max="1" step="0.05" value="0.55">
+      </div>
+      <div class="ctl">
+        <label>Grain <span class="val" data-val="grain">0.12</span></label>
+        <input type="range" data-param="grain" min="0" max="0.4" step="0.02" value="0.12">
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CSS panel ─── -->
+  <div class="panel" id="panel-css">
+    <div class="code-head">
+      <span class="code-label">Drop-in CSS — one div, two pseudo-elements.</span>
+      <span>
+        <button class="copy-btn" data-copy="css">Copy CSS</button>
+        <span class="toast" data-toast="css">Copied</span>
+      </span>
+    </div>
+    <pre class="code" id="cssCode"></pre>
+  </div>
+
+  <!-- ─── React panel ─── -->
+  <div class="panel" id="panel-react">
+    <div class="code-head">
+      <span class="code-label">Self-contained component — no dependencies.</span>
+      <span>
+        <button class="copy-btn" data-copy="react">Copy JSX</button>
+        <span class="toast" data-toast="react">Copied</span>
+      </span>
+    </div>
+    <pre class="code" id="reactCode"></pre>
+  </div>
+
+  <footer>Form Follows Function.</footer>
+</div>
+
+<script>
+  const orb = document.getElementById('orb');
+  const orbWrap = document.getElementById('orbWrap');
+  const orbStatus = document.getElementById('orbStatus');
+
+  const DEFAULTS = { a: '#c8ff00', b: '#4dd6ff', c: '#7a5cff', size: 220, speed: 10, soften: 30, glow: 0.35, hl: 0.55, grain: 0.12 };
+  const params = { ...DEFAULTS };
+
+  const PRESETS = [
+    { name: 'Forma',  a: '#c8ff00', b: '#e8e6e2', c: '#3a4d00' },
+    { name: 'Ember',  a: '#ff6a00', b: '#ff2d55', c: '#7a1fa2' },
+    { name: 'Ocean',  a: '#00e0ff', b: '#2b6bff', c: '#6a00ff' },
+    { name: 'Aurora', a: '#48ffb1', b: '#00c2ff', c: '#8a5cff' },
+    { name: 'Rose',   a: '#ff9ecb', b: '#ff4d6d', c: '#6f1d3d' },
+    { name: 'Ghost',  a: '#e8e6e2', b: '#a3a09b', c: '#3a3835' }
+  ];
+
+  function hexToRgba(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(', ') + ', ' + alpha + ')';
+  }
+
+  function setVars(el, p, size) {
+    el.style.setProperty('--o-a', p.a);
+    el.style.setProperty('--o-b', p.b);
+    el.style.setProperty('--o-c', p.c);
+    el.style.setProperty('--o-glow-c', hexToRgba(p.a, p.glow !== undefined ? p.glow : 0.35));
+    if (size) el.style.setProperty('--o-size', size);
+  }
+
+  function apply() {
+    setVars(orb, params, params.size + 'px');
+    orb.style.setProperty('--o-speed', params.speed + 's');
+    orb.style.setProperty('--o-soften', params.soften + 'px');
+    orb.style.setProperty('--o-hl', params.hl);
+    orb.style.setProperty('--o-grain', params.grain);
+
+    document.querySelectorAll('.val').forEach(v => {
+      const k = v.dataset.val;
+      v.textContent =
+        k === 'size' ? params.size + 'px' :
+        k === 'speed' ? params.speed + 's' :
+        k === 'soften' ? params.soften + 'px' :
+        Number(params[k]).toFixed(2);
+    });
+
+    document.getElementById('cssCode').textContent = cssCode();
+    document.getElementById('reactCode').textContent = reactCode();
+  }
+
+  function cssCode() {
+    return [
+      '.orb {',
+      '  position: relative;',
+      '  width: ' + params.size + 'px;',
+      '  aspect-ratio: 1;',
+      '  border-radius: 50%;',
+      '  overflow: hidden;',
+      '  background: #050504;',
+      '  box-shadow:',
+      '    0 0 ' + Math.round(params.size * 0.45) + 'px ' + hexToRgba(params.a, params.glow) + ',',
+      '    inset 0 0 ' + Math.round(params.size * 0.18) + 'px rgba(0, 0, 0, 0.65);',
+      '}',
+      '',
+      '.orb::before {',
+      "  content: '';",
+      '  position: absolute;',
+      '  inset: -30%;',
+      '  background: conic-gradient(from 0deg, ' + params.a + ', ' + params.b + ', ' + params.c + ', ' + params.a + ');',
+      '  filter: blur(' + params.soften + 'px);',
+      '  animation: orb-spin ' + params.speed + 's linear infinite;',
+      '}',
+      '',
+      '.orb::after {',
+      "  content: '';",
+      '  position: absolute;',
+      '  inset: 0;',
+      '  border-radius: 50%;',
+      '  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, ' + params.hl + '), transparent 46%);',
+      '  mix-blend-mode: screen;',
+      '}',
+      '',
+      '@keyframes orb-spin { to { transform: rotate(360deg); } }',
+      '',
+      '/* Thinking state — add .is-thinking to speed up the spin: */',
+      '.orb.is-thinking::before { animation-duration: ' + (params.speed / 4).toFixed(1) + 's; }'
+    ].join('\n');
+  }
+
+  function reactCode() {
+    return [
+      'export function ThinkingOrb({',
+      '  size = ' + params.size + ',',
+      "  colors = ['" + params.a + "', '" + params.b + "', '" + params.c + "'],",
+      '  speed = ' + params.speed + ',        // seconds per revolution',
+      '  soften = ' + params.soften + ',      // inner blur, px',
+      '  glow = ' + params.glow + ',',
+      '  highlight = ' + params.hl + ',',
+      '  thinking = false, // true -> spins 4x faster',
+      '}) {',
+      '  const [a, b, c] = colors;',
+      '  const glowColor = a + Math.round(glow * 255).toString(16).padStart(2, "0");',
+      '  return (',
+      '    <div',
+      '      style={{',
+      '        position: "relative",',
+      '        width: size,',
+      '        aspectRatio: "1",',
+      '        borderRadius: "50%",',
+      '        overflow: "hidden",',
+      '        background: "#050504",',
+      '        boxShadow: `0 0 ${size * 0.45}px ${glowColor}, inset 0 0 ${size * 0.18}px rgba(0,0,0,0.65)`,',
+      '      }}',
+      '    >',
+      '      <div',
+      '        style={{',
+      '          position: "absolute",',
+      '          inset: "-30%",',
+      '          background: `conic-gradient(from 0deg, ${a}, ${b}, ${c}, ${a})`,',
+      '          filter: `blur(${soften}px)`,',
+      '          animation: `orb-spin ${thinking ? speed / 4 : speed}s linear infinite`,',
+      '        }}',
+      '      />',
+      '      <div',
+      '        style={{',
+      '          position: "absolute",',
+      '          inset: 0,',
+      '          borderRadius: "50%",',
+      '          background: `radial-gradient(circle at 32% 26%, rgba(255,255,255,${highlight}), transparent 46%)`,',
+      '          mixBlendMode: "screen",',
+      '        }}',
+      '      />',
+      '      <style>{`@keyframes orb-spin { to { transform: rotate(360deg); } }`}</style>',
+      '    </div>',
+      '  );',
+      '}'
+    ].join('\n');
+  }
+
+  // Presets shelf — each one a live mini orb
+  const presetsEl = document.getElementById('presets');
+  PRESETS.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset';
+    btn.innerHTML = '<div class="orb" style="--o-speed: ' + (6 + i * 2) + 's; --d: ' + (i * 0.6) + 's;"></div><span>' + p.name + '</span>';
+    setVars(btn.querySelector('.orb'), { ...p, glow: 0.4 });
+    btn.addEventListener('click', () => {
+      params.a = p.a; params.b = p.b; params.c = p.c;
+      document.querySelectorAll('input[type="color"]').forEach(inp => {
+        inp.value = params[inp.dataset.color];
+      });
+      document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      apply();
+    });
+    presetsEl.appendChild(btn);
+  });
+
+  // Inputs
+  document.querySelectorAll('input[type="range"]').forEach(input => {
+    input.addEventListener('input', () => {
+      params[input.dataset.param] = parseFloat(input.value);
+      apply();
+    });
+  });
+
+  document.querySelectorAll('input[type="color"]').forEach(input => {
+    input.addEventListener('input', () => {
+      params[input.dataset.color] = input.value;
+      document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+      apply();
+    });
+  });
+
+  // Thinking toggle
+  orbWrap.addEventListener('click', () => {
+    const thinking = orb.classList.toggle('is-thinking');
+    orbStatus.innerHTML = thinking
+      ? '( <span class="on">thinking&hellip;</span> — click to rest )'
+      : '( idle — click the orb )';
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.dataset.copy === 'css'
+        ? document.getElementById('cssCode').textContent
+        : document.getElementById('reactCode').textContent;
+      const toastEl = document.querySelector('[data-toast="' + btn.dataset.copy + '"]');
+      navigator.clipboard.writeText(text).then(() => {
+        toastEl.classList.add('is-visible');
+        setTimeout(() => toastEl.classList.remove('is-visible'), 2000);
+      });
+    });
+  });
+
+  apply();
+</script>
+
+</body>
+</html>
