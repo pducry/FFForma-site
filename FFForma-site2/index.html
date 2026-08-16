@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FFForma — Design Studio</title>
+  <meta name="description" content="A design studio born from AI. We shape brands, websites, and digital products.">
+  <meta name="theme-color" content="#0b0a09">
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Tokens ─── */
+    :root {
+      --bg: #0b0a09;
+      --bg-raised: #141311;
+      --fg: #e8e6e2;
+      --subtle: #a3a09b;
+      --subtler: #6f6c67;
+      --line: #262421;
+      --accent: #c8ff00;
+      --font-mono: 'Geist Mono', 'Courier New', monospace;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    a {
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    a:hover { color: var(--accent); }
+
+    a:focus-visible,
+    button:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    /* ─── Layout ─── */
+    .container {
+      width: 90%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    main { padding-top: 56px; }
+
+    /* ─── Language toggle ─── */
+    .lang-toggle {
+      display: flex;
+      justify-content: flex-end;
+      align-items: baseline;
+      gap: 0.5em;
+      font-size: 0.72rem;
+      color: var(--subtler);
+      margin-bottom: 44px;
+    }
+
+    .lang-btn {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtler);
+      transition: color 0.2s ease;
+    }
+
+    .lang-btn:hover { color: var(--fg); }
+
+    .lang-btn.active { color: var(--fg); }
+
+    /* ─── Hero ─── */
+    .hero { padding: 48px 0 90px; }
+
+    .hero h1 {
+      margin-bottom: 16px;
+      line-height: 0;
+    }
+
+    .hero h1 img {
+      height: 22px;
+      width: auto;
+    }
+
+    .hero p { color: var(--fg); }
+
+    .hero p + p { margin-top: 14px; }
+
+    /* ─── Q&A ─── */
+    .qa > div:not(:last-of-type) { margin-bottom: 40px; }
+
+    .question {
+      color: var(--subtler);
+      margin-bottom: 10px;
+    }
+
+    .answer { color: var(--fg); }
+
+    /* ─── Sections ─── */
+    section[data-block] { padding-top: 90px; }
+
+    h2 {
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: var(--subtler);
+      margin-bottom: 14px;
+    }
+
+    /* ─── Pricing (dotted leaders) ─── */
+    .pricing-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.7em;
+    }
+
+    .pricing-row:not(:last-of-type) { margin-bottom: 8px; }
+
+    .pricing-row .leader {
+      flex: 1;
+      border-bottom: 1px dotted var(--subtler);
+      transform: translateY(-4px);
+      min-width: 20px;
+    }
+
+    .pricing-row .price { color: var(--subtle); }
+
+    /* ─── Plain lists ─── */
+    ul { list-style: none; }
+
+    li:not(:last-of-type) { margin-bottom: 8px; }
+
+    .muted-list li { color: var(--subtle); }
+
+    .muted-list li:last-of-type { color: var(--subtler); }
+
+    /* ─── Work (hover reveal) ─── */
+    .work-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.7em;
+      cursor: crosshair;
+    }
+
+    .work-item .work-name { color: var(--fg); }
+
+    .work-item .work-kind { color: var(--subtler); }
+
+    .work-item:hover .work-name { color: var(--accent); }
+
+    .work-preview {
+      position: fixed;
+      z-index: 100;
+      pointer-events: none;
+      display: none;
+      width: 300px;
+      transform: translate(20px, -50%);
+    }
+
+    .work-preview.is-visible { display: block; }
+
+    .work-preview img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
+    }
+
+    /* Mobile: inline thumbnails instead of cursor preview */
+    .work-thumbs { display: none; }
+
+    @media (hover: none) {
+      .work-item { cursor: default; }
+
+      .hover-hint { display: none; }
+
+      .work-thumbs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        margin: 10px 0 4px;
+        scrollbar-width: none;
+      }
+
+      .work-thumbs::-webkit-scrollbar { display: none; }
+
+      .work-thumbs img {
+        height: 64px;
+        width: auto;
+        border-radius: 3px;
+        flex-shrink: 0;
+      }
+    }
+
+    /* ─── Contact ─── */
+    .contact-links {
+      display: flex;
+      gap: 1.5em;
+      margin-top: 10px;
+    }
+
+    .link-btn {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    .link-btn:hover { color: var(--accent); }
+
+    /* ─── Footer ─── */
+    footer {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1.15rem;
+      color: var(--fg);
+      padding: 100px 0 24px;
+    }
+
+    .footer-meta {
+      font-family: var(--font-mono);
+      font-style: normal;
+      font-size: 0.68rem;
+      color: var(--subtler);
+      margin-top: 40px;
+      padding-bottom: 26px;
+    }
+
+    /* ─── Modal ─── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.is-open { display: flex; }
+
+    .modal {
+      background: var(--bg-raised);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 2.2rem;
+      width: 100%;
+      max-width: 520px;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .modal::-webkit-scrollbar { display: none; }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--subtler);
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+
+    .modal-close:hover { color: var(--fg); }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 0.3rem;
+      padding-right: 2rem;
+    }
+
+    .modal-subtitle {
+      font-size: 0.78rem;
+      color: var(--subtle);
+      margin-bottom: 1.8rem;
+    }
+
+    /* ─── Form ─── */
+    .form-group { margin-bottom: 1.2rem; }
+
+    .form-label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--subtle);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-input,
+    .form-textarea {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      padding: 0.65rem 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus { border-color: var(--subtle); }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder { color: var(--subtler); }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 0.35rem 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      background: transparent;
+      color: var(--subtle);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip:hover {
+      border-color: var(--subtle);
+      color: var(--fg);
+    }
+
+    .chip.selected {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+
+    .form-submit {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 100px;
+      background: var(--fg);
+      color: var(--bg);
+      cursor: pointer;
+      margin-top: 0.6rem;
+      transition: background 0.2s ease;
+    }
+
+    .form-submit:hover { background: var(--accent); }
+
+    .form-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-error {
+      display: none;
+      margin-top: 0.8rem;
+      font-size: 0.75rem;
+      color: #f97066;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .form-error.is-visible { display: block; }
+
+    .form-success {
+      display: none;
+      text-align: center;
+      padding: 2rem 0;
+    }
+
+    .form-success.is-visible { display: block; }
+
+    .form-success-icon {
+      font-size: 2rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .form-success-title {
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+    }
+
+    .form-success-text {
+      font-size: 0.78rem;
+      color: var(--subtle);
+    }
+
+    /* ─── Motion ─── */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <main>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <span aria-hidden="true">/</span>
+      <button class="lang-btn" data-lang="pt">PT</button>
+    </div>
+
+    <!-- ═══ Hero ═══ -->
+    <section class="hero">
+      <h1><img src="img/logo-light.png" alt="FFForma"></h1>
+      <p data-i18n="hero.p1">A home for brands, interfaces, and creative experiments.</p>
+      <p data-i18n="hero.p2">Ideas that don't fit neatly into categories. Some become identities. Some become websites. Some become digital products. Some remain experiments.</p>
+    </section>
+
+    <!-- ═══ Q&A ═══ -->
+    <section class="qa">
+      <div>
+        <p class="question" data-i18n="qa.1.q">What is FFForma?</p>
+        <p class="answer" data-i18n="qa.1.a">A place where ideas take form — brands, interfaces, digital products.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.2.q">Why three F's?</p>
+        <p class="answer">Form Follows Function.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.3.q">Is it a studio?</p>
+        <p class="answer" data-i18n="qa.3.a">Depends.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.4.q">Is it just one person?</p>
+        <p class="answer" data-i18n="qa.4.a">Mostly.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.5.q">What do you actually do?</p>
+        <p class="answer" data-i18n="qa.5.a">Design identities. Build websites and products. Create visual series. Experiment with AI. Make things for the internet.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.6.q">Why so many forms?</p>
+        <p class="answer" data-i18n="qa.6.a">Because curiosity rarely follows a straight line.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.8.q">Doesn't that make the work generic?</p>
+        <p class="answer" data-i18n="qa.8.a">The opposite. Intelligence buys us time. We spend it on craft.</p>
+      </div>
+      <div>
+        <p class="question" data-i18n="qa.9.q">Do you take on clients?</p>
+        <p class="answer" data-i18n="qa.9.a">Selectively. When the work feels like a good fit.</p>
+      </div>
+    </section>
+
+    <!-- ═══ Investment ═══ -->
+    <section data-block>
+      <h2 data-i18n="inv.h">Investment</h2>
+      <div class="pricing-row">
+        <span data-i18n="inv.1">Brand Identity</span><span class="leader"></span><span class="price" data-i18n="inv.1p">from $4.000,00</span>
+      </div>
+      <div class="pricing-row">
+        <span data-i18n="inv.2">Web Design &amp; Dev</span><span class="leader"></span><span class="price" data-i18n="inv.2p">from $5.000,00</span>
+      </div>
+      <div class="pricing-row">
+        <span data-i18n="inv.3">Brand + Web</span><span class="leader"></span><span class="price" data-i18n="inv.3p">from $9.000,00</span>
+      </div>
+      <div class="pricing-row">
+        <span data-i18n="inv.4">Design Partner</span><span class="leader"></span><span class="price" data-i18n="inv.4p">from $5.500,00/m</span>
+      </div>
+    </section>
+
+    <!-- ═══ What we shape ═══ -->
+    <section data-block>
+      <h2 data-i18n="shape.h">What we shape</h2>
+      <ul>
+        <li data-i18n="svc.1">Brand Identity</li>
+        <li data-i18n="svc.2">Web Design</li>
+        <li data-i18n="svc.3">App &amp; Interface Design</li>
+        <li data-i18n="svc.4">Design Systems</li>
+        <li data-i18n="svc.5">Branding Experiences</li>
+        <li data-i18n="svc.6">Visuals</li>
+      </ul>
+    </section>
+
+    <!-- ═══ Selected work ═══ -->
+    <section data-block>
+      <h2><span data-i18n="work.h">Selected work</span> <span class="hover-hint" data-i18n="work.hint">— hover to see</span></h2>
+      <ul>
+        <li>
+          <div class="work-item" data-images="img/FFForma1.jpg,img/FFForma2.jpg,img/FFForma5.jpg,img/FFForma7.jpg,img/FFForma9.jpg,img/FFForma11.jpg">
+            <span class="work-name">FFForma</span>
+            <span class="work-kind" data-i18n="work.kind1">Visual identity</span>
+          </div>
+          <div class="work-thumbs">
+            <img src="img/FFForma1.jpg" alt="FFForma visual identity" loading="lazy">
+            <img src="img/FFForma2.jpg" alt="FFForma visual identity" loading="lazy">
+            <img src="img/FFForma5.jpg" alt="FFForma visual identity" loading="lazy">
+            <img src="img/FFForma7.jpg" alt="FFForma visual identity" loading="lazy">
+          </div>
+        </li>
+        <li>
+          <div class="work-item" data-images="img/combustion1.jpg,img/combustion6.jpg,img/combustion9.jpg">
+            <span class="work-name">Combustion</span>
+            <span class="work-kind" data-i18n="work.kind2">Visual series</span>
+          </div>
+          <div class="work-thumbs">
+            <img src="img/combustion1.jpg" alt="Combustion visual series" loading="lazy">
+            <img src="img/combustion6.jpg" alt="Combustion visual series" loading="lazy">
+            <img src="img/combustion9.jpg" alt="Combustion visual series" loading="lazy">
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ═══ Clients ═══ -->
+    <section data-block>
+      <h2 data-i18n="clients.h">Past clients include</h2>
+      <ul class="muted-list">
+        <li>Porsche</li>
+        <li>Red Bull</li>
+        <li>Oakley</li>
+        <li>Globosat</li>
+        <li>Rise</li>
+        <li>Landscape</li>
+        <li>Azeite Star</li>
+        <li data-i18n="clients.more">And more</li>
+      </ul>
+    </section>
+
+    <!-- ═══ Contact ═══ -->
+    <section data-block>
+      <h2 data-i18n="contact.h">Ready to give your idea a form?</h2>
+      <div class="contact-links">
+        <button class="link-btn js-open-form" data-i18n="cta.start">Start a project</button>
+        <a href="#" data-cal-link="pedro-julien" data-cal-config='{"layout":"month_view"}' data-i18n="cta.call">Book a call</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══ Footer ═══ -->
+  <footer>
+    Form Follows Function.
+    <div class="footer-meta" data-i18n="footer.meta">&copy; 2026 FFForma Studio. All rights reserved.</div>
+  </footer>
+</div>
+
+<!-- Floating work preview -->
+<div class="work-preview" id="workPreview" aria-hidden="true">
+  <img src="" alt="">
+</div>
+
+<!-- ═══ PROJECT FORM MODAL ═══ -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal">
+    <button class="modal-close" id="closeFormBtn" aria-label="Close">&times;</button>
+
+    <!-- Form -->
+    <form id="projectForm" action="https://formsubmit.co/ajax/pducry@gmail.com" method="POST">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_subject" value="New project inquiry — FFForma">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_next" value="#">
+      <input type="text" name="_honey" style="display:none">
+
+      <div class="modal-title" data-i18n="modal.title">Let's give your idea a form.</div>
+      <div class="modal-subtitle" data-i18n="modal.subtitle">Fill out the form and we'll get back to you within 24 hours.</div>
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="form.name">Name</label>
+        <input class="form-input" type="text" name="name" placeholder="Your name" data-i18n-ph="form.namePh" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="form.email">Email</label>
+        <input class="form-input" type="email" name="email" placeholder="Your email" data-i18n-ph="form.emailPh" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="form.msg">Tell us about your project</label>
+        <textarea class="form-textarea" name="message" placeholder="What are you building and what do you need help with?" data-i18n-ph="form.msgPh"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="form.type">Type of work</label>
+        <div class="chip-group" data-field="type">
+          <button type="button" class="chip" data-value="Branding">Branding</button>
+          <button type="button" class="chip" data-value="Web Design">Web Design</button>
+          <button type="button" class="chip" data-value="Framer Dev">Framer Dev</button>
+          <button type="button" class="chip" data-value="App Design">App Design</button>
+        </div>
+        <input type="hidden" name="type_of_work" id="typeOfWork">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="form.budget">Budget</label>
+        <div class="chip-group" data-field="budget">
+          <button type="button" class="chip" data-value="<$4K">&lt;$4K</button>
+          <button type="button" class="chip" data-value="$4K - $10K">$4K - $10K</button>
+          <button type="button" class="chip" data-value="$10K - $20K">$10K - $20K</button>
+          <button type="button" class="chip" data-value="$20K+">$20K +</button>
+        </div>
+        <input type="hidden" name="budget" id="budgetField">
+      </div>
+
+      <button type="submit" class="form-submit" data-i18n="form.send">Send message</button>
+      <div class="form-error" id="formError" role="alert" aria-live="polite"></div>
+    </form>
+
+    <!-- Success -->
+    <div class="form-success" id="formSuccess">
+      <div class="form-success-icon">&#10003;</div>
+      <div class="form-success-title" data-i18n="success.title">Message sent!</div>
+      <div class="form-success-text" data-i18n="success.text">We'll get back to you within 24 hours.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Cal.com Embed -->
+<script type="text/javascript">
+(function (C, A, L) {
+  let p = function (a, ar) { a.q.push(ar); };
+  let d = C.document;
+  C.Cal = C.Cal || function () {
+    let cal = C.Cal;
+    let ar = arguments;
+    if (!cal.loaded) {
+      cal.ns = {};
+      cal.q = cal.q || [];
+      d.head.appendChild(d.createElement("script")).src = A;
+      cal.loaded = true;
+    }
+    if (ar[0] === L) {
+      const api = function () { p(api, arguments); };
+      const namespace = ar[1];
+      api.q = api.q || [];
+      if (typeof namespace === "string") {
+        cal.ns[namespace] = cal.ns[namespace] || api;
+        p(cal.ns[namespace], ar);
+        p(cal, ["initNamespace", namespace]);
+      } else {
+        p(cal, ar);
+      }
+      return;
+    }
+    p(cal, ar);
+  };
+})(window, "https://app.cal.com/embed/embed.js", "init");
+
+Cal("init", {origin: "https://cal.com"});
+Cal("ui", {
+  "styles": { "branding": { "brandColor": "#c8ff00" } },
+  "hideEventTypeDetails": false,
+  "layout": "month_view"
+});
+</script>
+
+<script>
+  // ─── Project Form Modal ───
+  const formModal = document.getElementById('formModal');
+  const closeFormBtn = document.getElementById('closeFormBtn');
+  const projectForm = document.getElementById('projectForm');
+  const formSuccess = document.getElementById('formSuccess');
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.js-open-form')) formModal.classList.add('is-open');
+  });
+
+  closeFormBtn.addEventListener('click', () => {
+    formModal.classList.remove('is-open');
+  });
+
+  formModal.addEventListener('click', (e) => {
+    if (e.target === formModal) formModal.classList.remove('is-open');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') formModal.classList.remove('is-open');
+  });
+
+  // Chip selection (toggle)
+  document.querySelectorAll('.chip-group').forEach(group => {
+    const field = group.dataset.field;
+    const hidden = field === 'type'
+      ? document.getElementById('typeOfWork')
+      : document.getElementById('budgetField');
+
+    group.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const wasSelected = chip.classList.contains('selected');
+        group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+        if (!wasSelected) {
+          chip.classList.add('selected');
+          hidden.value = chip.dataset.value;
+        } else {
+          hidden.value = '';
+        }
+      });
+    });
+  });
+
+  // Form submission via fetch (no redirect)
+  const formError = document.getElementById('formError');
+  const submitBtn = projectForm.querySelector('.form-submit');
+  let GENERIC_FORM_ERROR = 'Something went wrong. Please try again or book a call.';
+
+  function isFormSubmitSuccess(res, result) {
+    if (!res || !res.ok || !result) return false;
+    return result.success === true || result.success === 'true';
+  }
+
+  function showFormError(message) {
+    formError.textContent = message || GENERIC_FORM_ERROR;
+    formError.classList.add('is-visible');
+  }
+
+  function clearFormError() {
+    formError.textContent = '';
+    formError.classList.remove('is-visible');
+  }
+
+  function resetFormUi() {
+    projectForm.style.display = '';
+    formSuccess.classList.remove('is-visible');
+    projectForm.reset();
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('typeOfWork').value = '';
+    document.getElementById('budgetField').value = '';
+    clearFormError();
+    submitBtn.disabled = false;
+  }
+
+  projectForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFormError();
+    submitBtn.disabled = true;
+
+    const formData = new FormData(projectForm);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch(projectForm.action, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      let result = null;
+      try {
+        result = await res.json();
+      } catch (_) {
+        result = null;
+      }
+
+      if (!isFormSubmitSuccess(res, result)) {
+        const message = (result && result.message) ? String(result.message) : GENERIC_FORM_ERROR;
+        throw new Error(message);
+      }
+
+      // Show success only after a confirmed FormSubmit acceptance
+      projectForm.style.display = 'none';
+      formSuccess.classList.add('is-visible');
+
+      setTimeout(() => {
+        formModal.classList.remove('is-open');
+        setTimeout(resetFormUi, 300);
+      }, 3000);
+    } catch (err) {
+      console.error('FormSubmit error:', err);
+      showFormError(err && err.message ? err.message : GENERIC_FORM_ERROR);
+      submitBtn.disabled = false;
+    }
+  });
+
+  // ─── Language toggle (EN/PT) ───
+  const I18N = {
+    en: {
+      'hero.p1': "A home for brands, interfaces, and creative experiments.",
+      'hero.p2': "Ideas that don't fit neatly into categories. Some become identities. Some become websites. Some become digital products. Some remain experiments.",
+      'qa.1.q': "What is FFForma?",
+      'qa.1.a': "A place where ideas take form — brands, interfaces, digital products.",
+      'qa.2.q': "Why three F's?",
+      'qa.3.q': "Is it a studio?",
+      'qa.3.a': "Depends.",
+      'qa.4.q': "Is it just one person?",
+      'qa.4.a': "Mostly.",
+      'qa.5.q': "What do you actually do?",
+      'qa.5.a': "Design identities. Build websites and products. Create visual series. Experiment with AI. Make things for the internet.",
+      'qa.6.q': "Why so many forms?",
+      'qa.6.a': "Because curiosity rarely follows a straight line.",
+      'qa.8.q': "Doesn't that make the work generic?",
+      'qa.8.a': "The opposite. Intelligence buys us time. We spend it on craft.",
+      'qa.9.q': "Do you take on clients?",
+      'qa.9.a': "Selectively. When the work feels like a good fit.",
+      'cta.start': "Start a project",
+      'cta.call': "Book a call",
+      'inv.h': "Investment",
+      'inv.1': "Brand Identity", 'inv.1p': "from $4.000,00",
+      'inv.2': "Web Design & Dev", 'inv.2p': "from $5.000,00",
+      'inv.3': "Brand + Web", 'inv.3p': "from $9.000,00",
+      'inv.4': "Design Partner", 'inv.4p': "from $5.500,00/m",
+      'shape.h': "What we shape",
+      'svc.1': "Brand Identity",
+      'svc.2': "Web Design",
+      'svc.3': "App & Interface Design",
+      'svc.4': "Design Systems",
+      'svc.5': "Branding Experiences",
+      'svc.6': "Visuals",
+      'work.h': "Selected work",
+      'work.hint': "— hover to see",
+      'work.kind1': "Visual identity",
+      'work.kind2': "Visual series",
+      'clients.h': "Past clients include",
+      'clients.more': "And more",
+      'contact.h': "Ready to give your idea a form?",
+      'footer.meta': "© 2026 FFForma Studio. All rights reserved.",
+      'modal.title': "Let's give your idea a form.",
+      'modal.subtitle': "Fill out the form and we'll get back to you within 24 hours.",
+      'form.name': "Name", 'form.namePh': "Your name",
+      'form.email': "Email", 'form.emailPh': "Your email",
+      'form.msg': "Tell us about your project",
+      'form.msgPh': "What are you building and what do you need help with?",
+      'form.type': "Type of work",
+      'form.budget': "Budget",
+      'form.send': "Send message",
+      'form.error': "Something went wrong. Please try again or book a call.",
+      'success.title': "Message sent!",
+      'success.text': "We'll get back to you within 24 hours."
+    },
+    pt: {
+      'hero.p1': "Uma casa para marcas, interfaces e experimentos criativos.",
+      'hero.p2': "Ideias que não cabem direito em categorias. Algumas viram identidades. Algumas viram sites. Algumas viram produtos digitais. Algumas permanecem experimentos.",
+      'qa.1.q': "O que é a FFForma?",
+      'qa.1.a': "Um lugar onde ideias ganham forma — marcas, interfaces, produtos digitais.",
+      'qa.2.q': "Por que três F's?",
+      'qa.3.q': "É um estúdio?",
+      'qa.3.a': "Depende.",
+      'qa.4.q': "É uma pessoa só?",
+      'qa.4.a': "Quase sempre.",
+      'qa.5.q': "O que vocês fazem, afinal?",
+      'qa.5.a': "Desenhamos identidades. Construímos sites e produtos. Criamos séries visuais. Experimentamos com AI. Fazemos coisas para a internet.",
+      'qa.6.q': "Por que tantas formas?",
+      'qa.6.a': "Porque a curiosidade raramente anda em linha reta.",
+      'qa.8.q': "Isso não deixa o trabalho genérico?",
+      'qa.8.a': "O oposto. A inteligência nos dá tempo. Gastamos esse tempo no ofício.",
+      'qa.9.q': "Vocês atendem clientes?",
+      'qa.9.a': "Seletivamente. Quando o trabalho tem o encaixe certo.",
+      'cta.start': "Comece um projeto",
+      'cta.call': "Agendar uma call",
+      'inv.h': "Investimento",
+      'inv.1': "Identidade de marca", 'inv.1p': "a partir de $4.000,00",
+      'inv.2': "Web design & dev", 'inv.2p': "a partir de $5.000,00",
+      'inv.3': "Marca + Web", 'inv.3p': "a partir de $9.000,00",
+      'inv.4': "Design partner", 'inv.4p': "a partir de $5.500,00/m",
+      'shape.h': "O que moldamos",
+      'svc.1': "Identidade de marca",
+      'svc.2': "Web design",
+      'svc.3': "Design de apps e interfaces",
+      'svc.4': "Design systems",
+      'svc.5': "Experiências de marca",
+      'svc.6': "Visuais",
+      'work.h': "Trabalhos selecionados",
+      'work.hint': "— passe o mouse",
+      'work.kind1': "Identidade visual",
+      'work.kind2': "Série visual",
+      'clients.h': "Clientes anteriores incluem",
+      'clients.more': "E mais",
+      'contact.h': "Pronto pra dar forma à sua ideia?",
+      'footer.meta': "© 2026 FFForma Studio. Todos os direitos reservados.",
+      'modal.title': "Vamos dar forma à sua ideia.",
+      'modal.subtitle': "Preencha o formulário e retornamos em até 24 horas.",
+      'form.name': "Nome", 'form.namePh': "Seu nome",
+      'form.email': "Email", 'form.emailPh': "Seu email",
+      'form.msg': "Conte sobre o seu projeto",
+      'form.msgPh': "O que você está construindo e onde precisa de ajuda?",
+      'form.type': "Tipo de trabalho",
+      'form.budget': "Orçamento",
+      'form.send': "Enviar mensagem",
+      'form.error': "Algo deu errado. Tente de novo ou agende uma call.",
+      'success.title': "Mensagem enviada!",
+      'success.text': "Retornamos em até 24 horas."
+    }
+  };
+
+  // localStorage can be unavailable in sandboxed previews
+  const langStore = {
+    get() { try { return localStorage.getItem('ffforma-lang'); } catch (_) { return null; } },
+    set(v) { try { localStorage.setItem('ffforma-lang', v); } catch (_) {} }
+  };
+
+  let currentLang = langStore.get()
+    || ((navigator.language || '').toLowerCase().startsWith('pt') ? 'pt' : 'en');
+
+  function applyLang(lang) {
+    currentLang = lang;
+    const dict = I18N[lang];
+    document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const t = dict[el.dataset.i18n];
+      if (t !== undefined) el.textContent = t;
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+      const t = dict[el.dataset.i18nPh];
+      if (t !== undefined) el.placeholder = t;
+    });
+    GENERIC_FORM_ERROR = dict['form.error'];
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+    langStore.set(lang);
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+  });
+
+  applyLang(currentLang);
+
+  // ─── Work hover preview ───
+  const preview = document.getElementById('workPreview');
+  const previewImg = preview.querySelector('img');
+  const canHover = window.matchMedia('(hover: hover)').matches;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let cycleTimer = null;
+
+  if (canHover) {
+    document.querySelectorAll('.work-item').forEach(item => {
+      const images = item.dataset.images.split(',');
+      let index = 0;
+
+      item.addEventListener('mouseenter', () => {
+        index = 0;
+        previewImg.src = images[0];
+        preview.classList.add('is-visible');
+        if (!reducedMotion && images.length > 1) {
+          cycleTimer = setInterval(() => {
+            index = (index + 1) % images.length;
+            previewImg.src = images[index];
+          }, 500);
+        }
+      });
+
+      item.addEventListener('mousemove', (e) => {
+        // Flip to the left of the cursor near the right edge
+        const flip = e.clientX + 340 > window.innerWidth;
+        preview.style.left = e.clientX + 'px';
+        preview.style.top = e.clientY + 'px';
+        preview.style.transform = flip
+          ? 'translate(calc(-100% - 20px), -50%)'
+          : 'translate(20px, -50%)';
+      });
+
+      item.addEventListener('mouseleave', () => {
+        preview.classList.remove('is-visible');
+        clearInterval(cycleTimer);
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
