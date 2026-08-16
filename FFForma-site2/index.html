@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <style>
-    /* ─── Tokens ─── */
+    /* ─── Tokens (dark is the house default) ─── */
     :root {
       --bg: #0b0a09;
       --bg-raised: #141311;
@@ -22,6 +22,18 @@
       --accent: #c8ff00;
       --font-mono: 'Geist Mono', 'Courier New', monospace;
       --font-serif: 'Instrument Serif', Georgia, serif;
+      color-scheme: dark;
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #f2f0ec;
+      --bg-raised: #ffffff;
+      --fg: #1d1c1a;
+      --subtle: #5f5c56;
+      --subtler: #8a8781;
+      --line: #dcd9d3;
+      --accent: #5f7d00; /* the chartreuse, grounded for paper */
     }
 
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,11 +48,13 @@
       background: var(--bg);
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
+    /* Selection stays chartreuse in both worlds */
     ::selection {
-      background: var(--accent);
-      color: var(--bg);
+      background: #c8ff00;
+      color: #151510;
     }
 
     a {
@@ -115,6 +129,46 @@
     .lang-btn:hover { color: var(--fg); }
 
     .lang-btn.active { color: var(--fg); }
+
+    /* ─── Theme toggle: an empty circle by night, a filled one by day ─── */
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 1.6em;
+    }
+
+    .theme-toggle {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    .theme-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1px solid var(--subtler);
+      background: transparent;
+      transition: background 0.25s ease, border-color 0.2s ease;
+    }
+
+    [data-theme="light"] .theme-dot {
+      background: var(--fg);
+      border-color: var(--fg);
+    }
+
+    .theme-toggle:hover .theme-dot { border-color: var(--accent); }
+
+    [data-theme="light"] .theme-toggle:hover .theme-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* White logo turns ink on paper */
+    [data-theme="light"] .hero h1 img { filter: invert(1); }
 
     /* ─── Hero ─── */
     .hero { padding: 48px 0 90px; }
@@ -306,10 +360,15 @@
 <div class="container">
   <main>
     <div class="top-bar">
-      <div class="lang-toggle" role="group" aria-label="Language">
-        <button class="lang-btn" data-lang="en">EN</button>
-        <span aria-hidden="true">/</span>
-        <button class="lang-btn" data-lang="pt">PT</button>
+      <div class="top-left">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <span aria-hidden="true">/</span>
+          <button class="lang-btn" data-lang="pt">PT</button>
+        </div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle light mode">
+          <span class="theme-dot"></span>
+        </button>
       </div>
       <nav class="connect" aria-label="Social links">
         <span class="connect-label">Connect:</span>
@@ -616,6 +675,32 @@ Cal("ui", {
 
   applyLang(currentLang);
 
+  // ─── Theme toggle (dark is home; light is a visit) ───
+  const themeStore = {
+    get() { try { return localStorage.getItem('ffforma-theme'); } catch (_) { return null; } },
+    set(v) { try { localStorage.setItem('ffforma-theme', v); } catch (_) {} }
+  };
+
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+
+  function applyTheme(theme) {
+    if (theme === 'light') {
+      document.documentElement.dataset.theme = 'light';
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+    if (themeMeta) themeMeta.content = theme === 'light' ? '#f2f0ec' : '#0b0a09';
+    document.getElementById('themeToggle').setAttribute('aria-label',
+      theme === 'light' ? 'Toggle dark mode' : 'Toggle light mode');
+    themeStore.set(theme);
+  }
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+  });
+
+  applyTheme(themeStore.get() === 'light' ? 'light' : 'dark');
+
   // ─── ASCII easter egg: the word emerges from the noise ───
   (function () {
     const egg = document.getElementById('asciiEgg');
@@ -625,7 +710,9 @@ Cal("ui", {
 
     const CELL_W = 11, CELL_H = 15;
     const CHARS = ' ··::;=+*#%@';
-    const GRAYS = ['#181714', '#242220', '#33312d', '#45433f', '#5a5751', '#6f6c67', '#8a8781', '#a3a09b', '#c0bdb7', '#d6d3cd', '#e8e6e2'];
+    const RAMP_DARK = ['#181714', '#242220', '#33312d', '#45433f', '#5a5751', '#6f6c67', '#8a8781', '#a3a09b', '#c0bdb7', '#d6d3cd', '#e8e6e2'];
+    const RAMP_LIGHT = ['#e2dfd9', '#d3d0ca', '#c0bdb7', '#a8a5a0', '#8a8781', '#6f6c67', '#55524d', '#45433f', '#33312d', '#242220', '#181714'];
+    const ramp = () => document.documentElement.dataset.theme === 'light' ? RAMP_LIGHT : RAMP_DARK;
 
     let cols = 0, rows = 0, mask = [], phase = [], heat = [];
     const cursor = { x: -9999, y: -9999 };
@@ -715,7 +802,8 @@ Cal("ui", {
 
           const ci = Math.min(CHARS.length - 1, Math.floor(I * (CHARS.length - 0.01)));
           if (ci === 0) continue;
-          ctx.fillStyle = GRAYS[Math.min(GRAYS.length - 1, Math.floor(I * GRAYS.length))];
+          const g = ramp();
+          ctx.fillStyle = g[Math.min(g.length - 1, Math.floor(I * g.length))];
           ctx.fillText(CHARS[ci], x, y);
         }
       }
@@ -735,7 +823,8 @@ Cal("ui", {
           const I = mask[i] * 0.75;
           const ci = Math.floor(I * (CHARS.length - 0.01));
           if (ci === 0) continue;
-          ctx.fillStyle = GRAYS[Math.min(GRAYS.length - 1, Math.floor(I * GRAYS.length))];
+          const g = ramp();
+          ctx.fillStyle = g[Math.min(g.length - 1, Math.floor(I * g.length))];
           ctx.fillText(CHARS[ci], c * CELL_W + CELL_W / 2, r * CELL_H + CELL_H / 2);
         }
       }
