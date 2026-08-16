@@ -197,8 +197,6 @@
     .exp-link:hover,
     .exp-link:hover .arrow-icon { color: var(--accent); }
 
-    .exp-kind { color: var(--subtler); }
-
     /* ─── Prose sections ─── */
     .prose p + p { margin-top: 14px; }
 
@@ -216,8 +214,6 @@
     }
 
     .work-item .work-name { color: var(--fg); }
-
-    .work-item .work-kind { color: var(--subtler); }
 
     .work-item:hover .work-name { color: var(--accent); }
 
@@ -245,8 +241,6 @@
 
     @media (hover: none) {
       .work-item { cursor: default; }
-
-      .hover-hint { display: none; }
 
       .work-thumbs {
         display: flex;
@@ -364,12 +358,11 @@
 
     <!-- ═══ Selected work ═══ -->
     <section data-block>
-      <h2><span data-i18n="work.h">Selected work</span> <span class="hover-hint" data-i18n="work.hint">— hover to see</span></h2>
+      <h2 data-i18n="work.h">Selected work</h2>
       <ul>
         <li>
           <div class="work-item" data-images="img/FFForma1.jpg,img/FFForma2.jpg,img/ff-56.jpg,img/ff-60.jpg,img/ff-id4.jpg,img/ff-id15.jpg,img/ff-id21.jpg">
             <span class="work-name">FFForma</span>
-            <span class="work-kind" data-i18n="work.kind1">Visual identity</span>
           </div>
           <div class="work-thumbs">
             <img src="img/FFForma1.jpg" alt="FFForma visual identity" loading="lazy">
@@ -381,7 +374,6 @@
         <li>
           <div class="work-item" data-images="img/combustion1.jpg,img/combustion6.jpg,img/combustion9.jpg">
             <span class="work-name">Combustion</span>
-            <span class="work-kind" data-i18n="work.kind2">Visual series</span>
           </div>
           <div class="work-thumbs">
             <img src="img/combustion1.jpg" alt="Combustion visual series" loading="lazy">
@@ -392,7 +384,6 @@
         <li>
           <div class="work-item" data-images="img/pace-1.jpg,img/pace-2.jpg,img/pace-3.jpg,img/pace-4.jpg,img/pace-5.jpg,img/pace-6.jpg,img/pace-7.jpg,img/pace-8.jpg,img/pace-9.jpg,img/pace-10.jpg,img/pace-11.jpg,img/pace-12.jpg,img/pace-13.jpg,img/pace-14.jpg,img/pace-15.jpg">
             <span class="work-name">Pace</span>
-            <span class="work-kind" data-i18n="work.kind3">Brand identity</span>
           </div>
           <div class="work-thumbs">
             <img src="img/pace-1.jpg" alt="Pace brand identity" loading="lazy">
@@ -411,31 +402,26 @@
         <li>
           <div class="exp-item">
             <a class="exp-link" href="experiments/circular-share-menu/">Circular Share Menu<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
-            <span class="exp-kind">UI · 001</span>
           </div>
         </li>
         <li>
           <div class="exp-item">
             <a class="exp-link" href="experiments/text-highlight-on-scroll/">Text Highlight on Scroll<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
-            <span class="exp-kind">UI · 002</span>
           </div>
         </li>
         <li>
           <div class="exp-item">
             <a class="exp-link" href="experiments/liquid-glass/">Liquid Glass<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
-            <span class="exp-kind">UI · 003</span>
           </div>
         </li>
         <li>
           <div class="exp-item">
             <a class="exp-link" href="experiments/thinking-orb/">Thinking Orb<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
-            <span class="exp-kind">UI · 004</span>
           </div>
         </li>
         <li>
           <div class="exp-item">
             <a class="exp-link" href="experiments/magnetic-avatar/">Magnetic Avatar<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
-            <span class="exp-kind">UI · 005</span>
           </div>
         </li>
       </ul>
@@ -534,10 +520,6 @@ Cal("ui", {
       'ment.p2': "I've helped startups, scale-ups and enterprises improve the way they design and build products — from in-house designers sharpening their craft to founders leveling up their design thinking.",
       'ment.p3': "If that sounds like you, I'd love to chat.",
       'work.h': "Selected work",
-      'work.hint': "— hover to see",
-      'work.kind1': "Visual identity",
-      'work.kind2': "Visual series",
-      'work.kind3': "Brand identity",
       'footer.meta': "© 2026 FFForma Studio. All rights reserved.",
       'success.text': "We'll get back to you within 24 hours."
     },
@@ -565,10 +547,6 @@ Cal("ui", {
       'ment.p2': "Já ajudei startups, scale-ups e grandes empresas a melhorar a forma como desenham e constroem produtos — de designers internos apurando o ofício a founders elevando seu design thinking.",
       'ment.p3': "Se isso soa como você, adoraria conversar.",
       'work.h': "Trabalhos selecionados",
-      'work.hint': "— passe o mouse",
-      'work.kind1': "Identidade visual",
-      'work.kind2': "Série visual",
-      'work.kind3': "Identidade de marca",
       'footer.meta': "© 2026 FFForma Studio. Todos os direitos reservados.",
       'success.text': "Retornamos em até 24 horas."
     }
