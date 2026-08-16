@@ -100,7 +100,9 @@
 
     .manifesto .w.read { color: var(--fg); }
 
-    .manifesto .w.edge { color: var(--accent); }
+    /* Words inside the reveal band get their color set per-frame by JS;
+       transitions would lag behind the scroll position, so none here. */
+    .manifesto .w.hot { transition: none; }
 
     .end-mark {
       font-size: 0.75rem;
@@ -158,19 +160,43 @@
   const words = manifesto.querySelectorAll('.w');
   let ticking = false;
 
+  // The reveal front: a word ignites in accent the moment it crosses the
+  // reading line, then cools into the foreground color as the scroll moves
+  // past it — like ink drying. Interpolated per pixel, so the yellow tracks
+  // the exact scroll position instead of jumping word to word.
+  const ACCENT = [200, 255, 0];
+  const FG = [232, 230, 226];
+  const BAND = 80; // px of scroll it takes a word to cool from accent to fg
+
   function paint() {
     ticking = false;
     // The reading line sits at 55% of the viewport
     const focusY = window.innerHeight * 0.55;
-    let lastRead = -1;
 
-    words.forEach((w, i) => {
-      if (w.getBoundingClientRect().top < focusY) lastRead = i;
-    });
+    words.forEach(w => {
+      const d = focusY - w.getBoundingClientRect().top;
 
-    words.forEach((w, i) => {
-      w.classList.toggle('read', i <= lastRead);
-      w.classList.toggle('edge', i === lastRead);
+      if (d < 0) {
+        // Not reached yet
+        w.classList.remove('read', 'hot');
+        w.style.color = '';
+        w.style.textShadow = '';
+      } else if (d >= BAND) {
+        // Fully read — settled into the foreground color
+        w.classList.add('read');
+        w.classList.remove('hot');
+        w.style.color = '';
+        w.style.textShadow = '';
+      } else {
+        // On the front: blend accent -> fg by distance past the line
+        const t = d / BAND;
+        const e = t * t * (3 - 2 * t);
+        const c = ACCENT.map((a, i) => Math.round(a + (FG[i] - a) * e));
+        w.classList.add('hot');
+        w.classList.remove('read');
+        w.style.color = 'rgb(' + c.join(',') + ')';
+        w.style.textShadow = '0 0 14px rgba(200, 255, 0, ' + (0.3 * (1 - e)).toFixed(3) + ')';
+      }
     });
   }
 
