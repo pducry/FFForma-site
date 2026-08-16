@@ -133,16 +133,34 @@
       border-radius: 50%;
       overflow: hidden;
       border: 1px solid var(--line);
-      background: #141311;
+      background: #050504;
+      box-shadow: 0 0 22px var(--glow-c, rgba(200, 255, 0, 0.3)), inset 0 0 10px rgba(0, 0, 0, 0.6);
     }
 
-    .m-avatar .photo img {
+    /* The orb inside: parallax moves this wrapper, spin lives on the core */
+    .m-avatar .orb-inner {
       position: absolute;
-      inset: -14%;
-      width: 128%;
-      height: 128%;
-      object-fit: cover;
+      inset: 0;
       will-change: transform;
+    }
+
+    .m-avatar .orb-core {
+      position: absolute;
+      inset: -35%;
+      background: conic-gradient(from 0deg, var(--a), var(--b), var(--c), var(--a));
+      filter: blur(10px);
+      animation: core-spin var(--spd, 9s) linear infinite;
+    }
+
+    @keyframes core-spin { to { transform: rotate(360deg); } }
+
+    .m-avatar .orb-hl {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.5), transparent 46%);
+      mix-blend-mode: screen;
+      pointer-events: none;
     }
 
     /* Proximity ring — charges up as the cursor approaches */
@@ -445,12 +463,17 @@
 
 <script>
   const AVATARS = [
-    { name: 'FFForma',    src: '../../img/FFForma1.jpg' },
-    { name: 'Combustion', src: '../../img/combustion1.jpg' },
-    { name: 'Pace',       src: '../../img/pace-9.jpg' },
-    { name: 'NewId',      src: '../../img/ff-id4.jpg' },
-    { name: 'Ember',      src: '../../img/combustion6.jpg' }
+    { name: 'Forma',  a: '#c8ff00', b: '#e8e6e2', c: '#3a4d00' },
+    { name: 'Ember',  a: '#ff6a00', b: '#ff2d55', c: '#7a1fa2' },
+    { name: 'Ocean',  a: '#00e0ff', b: '#2b6bff', c: '#6a00ff' },
+    { name: 'Aurora', a: '#48ffb1', b: '#00c2ff', c: '#8a5cff' },
+    { name: 'Rose',   a: '#ff9ecb', b: '#ff4d6d', c: '#6f1d3d' }
   ];
+
+  function hexToRgba(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(', ') + ', ' + alpha + ')';
+  }
 
   const DEFAULTS = { size: 72, strength: 24, radius: 140, stiffness: 0.12, damping: 0.82, scale: 1.12, parallax: 0.5 };
   const params = { ...DEFAULTS };
@@ -460,19 +483,24 @@
   const avatarsEl = document.getElementById('avatars');
   const stageHint = document.getElementById('stageHint');
 
-  // Build avatars
-  const nodes = AVATARS.map(a => {
+  // Build avatars — each one a live orb
+  const nodes = AVATARS.map((a, i) => {
     const el = document.createElement('div');
     el.className = 'm-avatar';
+    el.style.setProperty('--a', a.a);
+    el.style.setProperty('--b', a.b);
+    el.style.setProperty('--c', a.c);
+    el.style.setProperty('--spd', (7 + i * 2) + 's');
+    el.style.setProperty('--glow-c', hexToRgba(a.a, 0.3));
     el.innerHTML =
       '<div class="field"></div>' +
-      '<div class="photo"><img src="' + a.src + '" alt="' + a.name + '"></div>' +
+      '<div class="photo"><div class="orb-inner"><div class="orb-core"></div></div><div class="orb-hl"></div></div>' +
       '<div class="ring"></div>' +
       '<span class="name">' + a.name + '</span>';
     avatarsEl.appendChild(el);
     return {
       el,
-      img: el.querySelector('img'),
+      img: el.querySelector('.orb-inner'),
       ring: el.querySelector('.ring'),
       field: el.querySelector('.field'),
       label: el.querySelector('.name'),
@@ -618,16 +646,33 @@
       '  border-radius: 50%;',
       '  overflow: hidden;',
       '  border: 1px solid #262421;',
+      '  background: #050504;',
       '}',
       '',
-      '.magnetic-avatar .photo img {',
+      '/* Parallax moves .orb-inner; the spin lives on .orb-core */',
+      '.magnetic-avatar .orb-inner {',
       '  position: absolute;',
-      '  inset: -14%;             /* headroom for the parallax shift */',
-      '  width: 128%;',
-      '  height: 128%;',
-      '  object-fit: cover;',
+      '  inset: 0;',
       '  will-change: transform;',
       '}',
+      '',
+      '.magnetic-avatar .orb-core {',
+      '  position: absolute;',
+      '  inset: -35%;',
+      '  background: conic-gradient(from 0deg, var(--a), var(--b), var(--c), var(--a));',
+      '  filter: blur(10px);',
+      '  animation: core-spin 9s linear infinite;',
+      '}',
+      '',
+      '.magnetic-avatar .orb-hl {',
+      '  position: absolute;',
+      '  inset: 0;',
+      '  border-radius: 50%;',
+      '  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.5), transparent 46%);',
+      '  mix-blend-mode: screen;',
+      '}',
+      '',
+      '@keyframes core-spin { to { transform: rotate(360deg); } }',
       '',
       '.magnetic-avatar .ring {',
       '  position: absolute;',
@@ -645,8 +690,8 @@
       'import { useEffect, useRef } from "react";',
       '',
       'export function MagneticAvatar({',
-      '  src,',
-      '  alt = "",',
+      "  colors = ['#c8ff00', '#e8e6e2', '#3a4d00'], // orb palette [a, b, c]",
+      '  spin = 9,          // seconds per core revolution',
       '  size = ' + params.size + ',',
       '  strength = ' + params.strength + ',    // max pull, px',
       '  radius = ' + params.radius + ',      // magnetic field radius, px',
@@ -657,12 +702,12 @@
       '  polarity = ' + polarity + ',      // 1 attracts, -1 repels',
       '}) {',
       '  const rootRef = useRef(null);',
-      '  const imgRef = useRef(null);',
+      '  const innerRef = useRef(null);',
       '  const ringRef = useRef(null);',
       '',
       '  useEffect(() => {',
       '    const root = rootRef.current;',
-      '    const img = imgRef.current;',
+      '    const inner = innerRef.current;',
       '    const ring = ringRef.current;',
       '    const s = { x: 0, y: 0, vx: 0, vy: 0 };',
       '    const cursor = { x: -9999, y: -9999 };',
@@ -694,7 +739,7 @@
       '',
       '      const scale = 1 + prox * (hoverScale - 1);',
       '      root.style.transform = `translate(${s.x}px, ${s.y}px) scale(${scale})`;',
-      '      img.style.transform = `translate(${-s.x * parallax}px, ${-s.y * parallax}px)`;',
+      '      inner.style.transform = `translate(${-s.x * parallax}px, ${-s.y * parallax}px)`;',
       '      ring.style.opacity = prox * 0.9;',
       '      raf = requestAnimationFrame(tick);',
       '    };',
@@ -712,10 +757,18 @@
       '    };',
       '  }, [strength, radius, stiffness, damping, hoverScale, parallax, polarity]);',
       '',
+      '  const [a, b, c] = colors;',
       '  return (',
-      '    <div ref={rootRef} className="magnetic-avatar" style={{ width: size }}>',
+      '    <div',
+      '      ref={rootRef}',
+      '      className="magnetic-avatar"',
+      '      style={{ width: size, "--a": a, "--b": b, "--c": c }}',
+      '    >',
       '      <div className="photo">',
-      '        <img ref={imgRef} src={src} alt={alt} />',
+      '        <div ref={innerRef} className="orb-inner">',
+      '          <div className="orb-core" style={{ animationDuration: `${spin}s` }} />',
+      '        </div>',
+      '        <div className="orb-hl" />',
       '      </div>',
       '      <div ref={ringRef} className="ring" />',
       '    </div>',
