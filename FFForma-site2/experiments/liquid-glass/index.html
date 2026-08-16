@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liquid Glass — FFForma Experiments</title>
+  <meta name="description" content="FFForma Experiment 003 — a liquid glass lens over old landscapes, with every parameter on a slider.">
+  <meta name="theme-color" content="#0b0a09">
+  <link rel="icon" type="image/png" href="../../img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0a09;
+      --fg: #e8e6e2;
+      --subtle: #a3a09b;
+      --subtler: #6f6c67;
+      --line: #262421;
+      --accent: #c8ff00;
+      --font-mono: 'Geist Mono', 'Courier New', monospace;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+
+      /* Glass parameters (driven by the sliders) */
+      --g-blur: 8px;
+      --g-sat: 140%;
+      --g-frost: 0.08;
+      --g-radius: 28px;
+      --g-hl: 0.5;
+      --g-w: 260px;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    a {
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    a:hover { color: var(--accent); }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    header { padding: 56px 0 0; }
+
+    .exp-eyebrow {
+      font-size: 0.72rem;
+      color: var(--subtler);
+      margin: 40px 0 6px;
+    }
+
+    h1 {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .exp-sub {
+      color: var(--subtle);
+      margin-top: 6px;
+    }
+
+    /* ─── Stage ─── */
+    .stage {
+      position: relative;
+      margin-top: 36px;
+      height: 440px;
+      border-radius: 8px;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+      touch-action: none;
+    }
+
+    .glass {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: var(--g-w);
+      height: calc(var(--g-w) * 0.62);
+      transform: translate(-50%, -50%);
+      border-radius: var(--g-radius);
+      cursor: grab;
+      background: rgba(255, 255, 255, var(--g-frost));
+      border: 1px solid rgba(255, 255, 255, calc(var(--g-hl) * 0.55));
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, var(--g-hl)),
+        inset 0 -1px 1px rgba(255, 255, 255, calc(var(--g-hl) * 0.25)),
+        0 16px 48px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+      -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+      /* Browsers that support SVG filters in backdrop-filter get the liquid refraction */
+      backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)) url(#liquid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .glass:active { cursor: grabbing; }
+
+    .glass .drag-hint {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.75);
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .glass.was-dragged .drag-hint { opacity: 0; }
+
+    /* ─── Controls ─── */
+    .controls {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 36px;
+    }
+
+    @media (max-width: 560px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+
+    .ctl label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--subtle);
+      margin-bottom: 6px;
+    }
+
+    .ctl .val {
+      color: var(--subtler);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 16px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 1px;
+      background: var(--line);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--fg);
+      margin-top: -5.5px;
+      transition: background 0.15s ease;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:active::-webkit-slider-thumb {
+      background: var(--accent);
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 1px;
+      background: var(--line);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border: none;
+      border-radius: 50%;
+      background: var(--fg);
+    }
+
+    input[type="range"]:hover::-moz-range-thumb { background: var(--accent); }
+
+    /* ─── Backgrounds & actions ─── */
+    .row {
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .bg-picker {
+      display: flex;
+      gap: 8px;
+    }
+
+    .bg-thumb {
+      width: 56px;
+      height: 36px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      background-size: cover;
+      background-position: center;
+      cursor: pointer;
+      padding: 0;
+      opacity: 0.55;
+      transition: opacity 0.2s ease, border-color 0.2s ease;
+    }
+
+    .bg-thumb:hover { opacity: 0.85; }
+
+    .bg-thumb.active {
+      opacity: 1;
+      border-color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      align-items: baseline;
+      gap: 1.4em;
+    }
+
+    .action-btn {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    .action-btn:hover { color: var(--accent); }
+
+    .toast {
+      font-size: 0.72rem;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .toast.is-visible { opacity: 1; }
+
+    /* ─── CSS output ─── */
+    .css-out-wrap { margin-top: 30px; }
+
+    .css-out-label {
+      font-size: 0.72rem;
+      color: var(--subtler);
+      margin-bottom: 8px;
+    }
+
+    .css-out {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      line-height: 1.6;
+      color: var(--subtle);
+      background: #100f0d;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    footer {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--subtler);
+      text-align: center;
+      padding: 56px 0 32px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Liquid displacement filter -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="liquid" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+    <feTurbulence id="liquidNoise" type="fractalNoise" baseFrequency="0.008 0.008" numOctaves="2" seed="7" result="noise"/>
+    <feGaussianBlur in="noise" stdDeviation="2" result="soft"/>
+    <feDisplacementMap id="liquidDisp" in="SourceGraphic" in2="soft" scale="60" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="container">
+  <header>
+    <a href="../../">&larr; FFForma</a>
+    <p class="exp-eyebrow">FFForma Experiments · UI · 003</p>
+    <h1>Liquid Glass</h1>
+    <p class="exp-sub">A refracting lens over old landscapes. Every parameter on a slider.</p>
+  </header>
+
+  <!-- Stage -->
+  <div class="stage" id="stage">
+    <div class="glass" id="glass">
+      <span class="drag-hint">( drag )</span>
+    </div>
+  </div>
+
+  <!-- Backgrounds + actions -->
+  <div class="row">
+    <div class="bg-picker" id="bgPicker" role="group" aria-label="Background painting">
+      <button class="bg-thumb active" data-bg="img/bg-1.jpg" aria-label="Painting I" style="background-image:url('img/bg-1.jpg')"></button>
+      <button class="bg-thumb" data-bg="img/bg-2.jpg" aria-label="Painting II" style="background-image:url('img/bg-2.jpg')"></button>
+      <button class="bg-thumb" data-bg="img/bg-3.jpg" aria-label="Painting III" style="background-image:url('img/bg-3.jpg')"></button>
+      <button class="bg-thumb" data-bg="img/bg-4.jpg" aria-label="Painting IV" style="background-image:url('img/bg-4.jpg')"></button>
+    </div>
+    <div class="actions">
+      <button class="action-btn" id="randomBtn">Randomize</button>
+      <button class="action-btn" id="resetBtn">Reset</button>
+      <button class="action-btn" id="copyBtn">Copy CSS</button>
+      <span class="toast" id="toast"></span>
+    </div>
+  </div>
+
+  <!-- Parameters -->
+  <div class="controls" id="controls">
+    <div class="ctl">
+      <label for="pBlur">Blur <span class="val" data-val="blur">8px</span></label>
+      <input type="range" id="pBlur" data-param="blur" min="0" max="40" step="1" value="8">
+    </div>
+    <div class="ctl">
+      <label for="pDist">Distortion <span class="val" data-val="dist">60</span></label>
+      <input type="range" id="pDist" data-param="dist" min="0" max="150" step="1" value="60">
+    </div>
+    <div class="ctl">
+      <label for="pRipple">Ripple <span class="val" data-val="ripple">0.008</span></label>
+      <input type="range" id="pRipple" data-param="ripple" min="0.002" max="0.04" step="0.001" value="0.008">
+    </div>
+    <div class="ctl">
+      <label for="pSat">Saturation <span class="val" data-val="sat">140%</span></label>
+      <input type="range" id="pSat" data-param="sat" min="50" max="250" step="5" value="140">
+    </div>
+    <div class="ctl">
+      <label for="pFrost">Frost <span class="val" data-val="frost">0.08</span></label>
+      <input type="range" id="pFrost" data-param="frost" min="0" max="0.5" step="0.01" value="0.08">
+    </div>
+    <div class="ctl">
+      <label for="pRadius">Radius <span class="val" data-val="radius">28px</span></label>
+      <input type="range" id="pRadius" data-param="radius" min="0" max="100" step="1" value="28">
+    </div>
+    <div class="ctl">
+      <label for="pHl">Highlight <span class="val" data-val="hl">0.5</span></label>
+      <input type="range" id="pHl" data-param="hl" min="0" max="1" step="0.05" value="0.5">
+    </div>
+    <div class="ctl">
+      <label for="pSize">Size <span class="val" data-val="size">260px</span></label>
+      <input type="range" id="pSize" data-param="size" min="140" max="420" step="10" value="260">
+    </div>
+  </div>
+
+  <!-- Generated CSS -->
+  <div class="css-out-wrap">
+    <p class="css-out-label">Generated CSS — take it with you.</p>
+    <pre class="css-out" id="cssOut"></pre>
+  </div>
+
+  <footer>Form Follows Function.</footer>
+</div>
+
+<script>
+  const root = document.documentElement;
+  const stage = document.getElementById('stage');
+  const glass = document.getElementById('glass');
+  const noiseEl = document.getElementById('liquidNoise');
+  const dispEl = document.getElementById('liquidDisp');
+  const cssOut = document.getElementById('cssOut');
+  const toast = document.getElementById('toast');
+
+  const DEFAULTS = { blur: 8, dist: 60, ripple: 0.008, sat: 140, frost: 0.08, radius: 28, hl: 0.5, size: 260 };
+  const params = { ...DEFAULTS };
+
+  stage.style.backgroundImage = "url('img/bg-1.jpg')";
+
+  function fmt(key) {
+    switch (key) {
+      case 'blur': return params.blur + 'px';
+      case 'ripple': return params.ripple.toFixed(3);
+      case 'sat': return params.sat + '%';
+      case 'frost': return params.frost.toFixed(2);
+      case 'radius': return params.radius + 'px';
+      case 'hl': return params.hl.toFixed(2);
+      case 'size': return params.size + 'px';
+      default: return String(params[key]);
+    }
+  }
+
+  function apply() {
+    root.style.setProperty('--g-blur', params.blur + 'px');
+    root.style.setProperty('--g-sat', params.sat + '%');
+    root.style.setProperty('--g-frost', params.frost);
+    root.style.setProperty('--g-radius', params.radius + 'px');
+    root.style.setProperty('--g-hl', params.hl);
+    root.style.setProperty('--g-w', params.size + 'px');
+    noiseEl.setAttribute('baseFrequency', params.ripple + ' ' + params.ripple);
+    dispEl.setAttribute('scale', params.dist);
+
+    document.querySelectorAll('.val').forEach(v => {
+      v.textContent = fmt(v.dataset.val);
+    });
+
+    cssOut.textContent = generatedCss();
+  }
+
+  function generatedCss() {
+    return [
+      '.liquid-glass {',
+      '  width: ' + params.size + 'px;',
+      '  border-radius: ' + params.radius + 'px;',
+      '  background: rgba(255, 255, 255, ' + params.frost.toFixed(2) + ');',
+      '  border: 1px solid rgba(255, 255, 255, ' + (params.hl * 0.55).toFixed(2) + ');',
+      '  box-shadow:',
+      '    inset 0 1px 1px rgba(255, 255, 255, ' + params.hl.toFixed(2) + '),',
+      '    inset 0 -1px 1px rgba(255, 255, 255, ' + (params.hl * 0.25).toFixed(2) + '),',
+      '    0 16px 48px rgba(0, 0, 0, 0.35);',
+      '  backdrop-filter: blur(' + params.blur + 'px) saturate(' + params.sat + '%);',
+      '  /* Liquid refraction where SVG backdrop filters are supported: */',
+      '  backdrop-filter: blur(' + params.blur + 'px) saturate(' + params.sat + '%) url(#liquid);',
+      '}',
+      '',
+      '/* Include this SVG once in your page: */',
+      '/*',
+      '<svg width="0" height="0" style="position:absolute">',
+      '  <filter id="liquid" x="-30%" y="-30%" width="160%" height="160%">',
+      '    <feTurbulence type="fractalNoise" baseFrequency="' + params.ripple.toFixed(3) + '" numOctaves="2" seed="7" result="noise"/>',
+      '    <feGaussianBlur in="noise" stdDeviation="2" result="soft"/>',
+      '    <feDisplacementMap in="SourceGraphic" in2="soft" scale="' + params.dist + '" xChannelSelector="R" yChannelSelector="G"/>',
+      '  </filter>',
+      '</svg>',
+      '*/'
+    ].join('\n');
+  }
+
+  // Sliders
+  document.querySelectorAll('input[type="range"]').forEach(input => {
+    input.addEventListener('input', () => {
+      params[input.dataset.param] = parseFloat(input.value);
+      apply();
+    });
+  });
+
+  function syncSliders() {
+    document.querySelectorAll('input[type="range"]').forEach(input => {
+      input.value = params[input.dataset.param];
+    });
+  }
+
+  // Background picker
+  document.querySelectorAll('.bg-thumb').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.bg-thumb').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      stage.style.backgroundImage = "url('" + btn.dataset.bg + "')";
+    });
+  });
+
+  // Actions
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2000);
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    Object.assign(params, DEFAULTS);
+    syncSliders();
+    apply();
+  });
+
+  document.getElementById('randomBtn').addEventListener('click', () => {
+    const r = (min, max, dec) => {
+      const v = min + Math.random() * (max - min);
+      return dec ? parseFloat(v.toFixed(dec)) : Math.round(v);
+    };
+    params.blur = r(2, 24);
+    params.dist = r(20, 130);
+    params.ripple = r(0.003, 0.03, 3);
+    params.sat = r(80, 220);
+    params.frost = r(0, 0.3, 2);
+    params.radius = r(8, 80);
+    params.hl = r(0.2, 0.9, 2);
+    syncSliders();
+    apply();
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(cssOut.textContent)
+      .then(() => showToast('CSS copied'))
+      .catch(() => showToast('Copy failed'));
+  });
+
+  // Drag the lens
+  let dragging = null;
+  glass.addEventListener('pointerdown', (e) => {
+    glass.classList.add('was-dragged');
+    glass.setPointerCapture(e.pointerId);
+    const rect = glass.getBoundingClientRect();
+    dragging = { dx: e.clientX - rect.left - rect.width / 2, dy: e.clientY - rect.top - rect.height / 2 };
+  });
+
+  glass.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const s = stage.getBoundingClientRect();
+    const g = glass.getBoundingClientRect();
+    let x = e.clientX - s.left - dragging.dx;
+    let y = e.clientY - s.top - dragging.dy;
+    x = Math.max(g.width / 2, Math.min(s.width - g.width / 2, x));
+    y = Math.max(g.height / 2, Math.min(s.height - g.height / 2, y));
+    glass.style.left = (x / s.width * 100) + '%';
+    glass.style.top = (y / s.height * 100) + '%';
+  });
+
+  glass.addEventListener('pointerup', () => { dragging = null; });
+  glass.addEventListener('pointercancel', () => { dragging = null; });
+
+  apply();
+</script>
+
+</body>
+</html>
