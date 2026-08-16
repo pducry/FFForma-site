@@ -136,23 +136,46 @@
       margin-bottom: 14px;
     }
 
-    /* ─── Pricing (dotted leaders) ─── */
-    .pricing-row {
+    /* ─── CTA & experiment links ─── */
+    .arrow-icon {
+      width: 1em;
+      height: 1em;
+      flex-shrink: 0;
+    }
+
+    .cta-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.95rem;
+      color: var(--fg);
+    }
+
+    .cta-link .arrow-icon { color: var(--subtler); }
+
+    .cta-link:hover,
+    .cta-link:hover .arrow-icon { color: var(--accent); }
+
+    .exp-item {
       display: flex;
       align-items: baseline;
       gap: 0.7em;
     }
 
-    .pricing-row:not(:last-of-type) { margin-bottom: 8px; }
-
-    .pricing-row .leader {
-      flex: 1;
-      border-bottom: 1px dotted var(--subtler);
-      transform: translateY(-4px);
-      min-width: 20px;
+    .exp-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--fg);
+      text-decoration: none;
     }
 
-    .pricing-row .price { color: var(--subtle); }
+    .exp-link .arrow-icon { color: var(--subtler); }
+
+    .exp-link:hover,
+    .exp-link:hover .arrow-icon { color: var(--accent); }
+
+    .exp-kind { color: var(--subtler); }
 
     /* ─── Plain lists ─── */
     ul { list-style: none; }
@@ -503,21 +526,9 @@
       </div>
     </section>
 
-    <!-- ═══ Investment ═══ -->
+    <!-- ═══ CTA ═══ -->
     <section data-block>
-      <h2 data-i18n="inv.h">Investment</h2>
-      <div class="pricing-row">
-        <span data-i18n="inv.1">Brand Identity</span><span class="leader"></span><span class="price" data-i18n="inv.1p">from $4.000,00</span>
-      </div>
-      <div class="pricing-row">
-        <span data-i18n="inv.2">Web Design &amp; Dev</span><span class="leader"></span><span class="price" data-i18n="inv.2p">from $5.000,00</span>
-      </div>
-      <div class="pricing-row">
-        <span data-i18n="inv.3">Brand + Web</span><span class="leader"></span><span class="price" data-i18n="inv.3p">from $9.000,00</span>
-      </div>
-      <div class="pricing-row">
-        <span data-i18n="inv.4">Design Partner</span><span class="leader"></span><span class="price" data-i18n="inv.4p">from $5.500,00/m</span>
-      </div>
+      <a href="#" data-cal-link="pedro-julien" data-cal-config='{"layout":"month_view"}' class="cta-link"><span data-i18n="cta.call">Book a call</span><svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
     </section>
 
     <!-- ═══ What we shape ═══ -->
@@ -558,6 +569,19 @@
             <img src="img/combustion1.jpg" alt="Combustion visual series" loading="lazy">
             <img src="img/combustion6.jpg" alt="Combustion visual series" loading="lazy">
             <img src="img/combustion9.jpg" alt="Combustion visual series" loading="lazy">
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ═══ FFForma Experiments ═══ -->
+    <section data-block>
+      <h2>FFForma Experiments</h2>
+      <ul>
+        <li>
+          <div class="exp-item">
+            <a class="exp-link" href="experiments/circular-share-menu/">Circular Share Menu<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></a>
+            <span class="exp-kind">UI · 001</span>
           </div>
         </li>
       </ul>
@@ -845,11 +869,6 @@ Cal("ui", {
       'qa.9.a': "Selectively. When the work feels like a good fit.",
       'cta.start': "Start a project",
       'cta.call': "Book a call",
-      'inv.h': "Investment",
-      'inv.1': "Brand Identity", 'inv.1p': "from $4.000,00",
-      'inv.2': "Web Design & Dev", 'inv.2p': "from $5.000,00",
-      'inv.3': "Brand + Web", 'inv.3p': "from $9.000,00",
-      'inv.4': "Design Partner", 'inv.4p': "from $5.500,00/m",
       'shape.h': "What we shape",
       'svc.1': "Brand Identity",
       'svc.2': "Web Design",
@@ -896,11 +915,6 @@ Cal("ui", {
       'qa.9.a': "Seletivamente. Quando o trabalho tem o encaixe certo.",
       'cta.start': "Comece um projeto",
       'cta.call': "Agendar uma call",
-      'inv.h': "Investimento",
-      'inv.1': "Identidade de marca", 'inv.1p': "a partir de $4.000,00",
-      'inv.2': "Web design & dev", 'inv.2p': "a partir de $5.000,00",
-      'inv.3': "Marca + Web", 'inv.3p': "a partir de $9.000,00",
-      'inv.4': "Design partner", 'inv.4p': "a partir de $5.500,00/m",
       'shape.h': "O que moldamos",
       'svc.1': "Identidade de marca",
       'svc.2': "Web design",
