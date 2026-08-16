@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magnetic Avatar — FFForma Experiments</title>
+  <meta name="description" content="FFForma Experiment 005 — avatars with a magnetic field: spring physics, parallax depth, and a polarity switch.">
+  <meta name="theme-color" content="#0b0a09">
+  <link rel="icon" type="image/png" href="../../img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0a09;
+      --fg: #e8e6e2;
+      --subtle: #a3a09b;
+      --subtler: #6f6c67;
+      --line: #262421;
+      --accent: #c8ff00;
+      --font-mono: 'Geist Mono', 'Courier New', monospace;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection { background: var(--accent); color: var(--bg); }
+
+    a {
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    a:hover { color: var(--accent); }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    header { padding: 56px 0 0; }
+
+    .exp-eyebrow {
+      font-size: 0.72rem;
+      color: var(--subtler);
+      margin: 40px 0 6px;
+    }
+
+    h1 { font-size: 0.95rem; font-weight: 500; }
+
+    .exp-sub { color: var(--subtle); margin-top: 6px; }
+
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 1.4em;
+      margin-top: 36px;
+      font-size: 0.78rem;
+    }
+
+    .tab {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtler);
+      transition: color 0.2s ease;
+    }
+
+    .tab:hover { color: var(--fg); }
+
+    .tab.active { color: var(--accent); }
+
+    .panel { display: none; }
+
+    .panel.active { display: block; }
+
+    /* ─── Stage ─── */
+    .stage {
+      position: relative;
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 56px;
+      padding: 30px 0 6px;
+      touch-action: none;
+    }
+
+    .avatars {
+      display: flex;
+      gap: 26px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ─── Magnetic avatar ─── */
+    .m-avatar {
+      position: relative;
+      width: var(--m-size, 72px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      cursor: pointer;
+      will-change: transform;
+    }
+
+    .m-avatar .photo {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #141311;
+    }
+
+    .m-avatar .photo img {
+      position: absolute;
+      inset: -14%;
+      width: 128%;
+      height: 128%;
+      object-fit: cover;
+      will-change: transform;
+    }
+
+    /* Proximity ring — charges up as the cursor approaches */
+    .m-avatar .ring {
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 1px solid var(--accent);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Dotted field boundary around the captured avatar */
+    .m-avatar .field {
+      position: absolute;
+      inset: -16px;
+      border-radius: 50%;
+      border: 1px dotted var(--subtler);
+      opacity: 0;
+      pointer-events: none;
+      animation: field-spin 24s linear infinite;
+    }
+
+    @keyframes field-spin { to { transform: rotate(360deg); } }
+
+    .m-avatar .name {
+      position: absolute;
+      top: calc(100% + 14px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: var(--accent);
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .stage-hint {
+      font-size: 0.72rem;
+      color: var(--subtler);
+      text-align: center;
+    }
+
+    .stage-hint .on { color: var(--accent); }
+
+    /* ─── Controls ─── */
+    .controls {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 36px;
+    }
+
+    @media (max-width: 560px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+
+    .ctl label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--subtle);
+      margin-bottom: 6px;
+    }
+
+    .ctl .val {
+      color: var(--subtler);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 16px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track { height: 1px; background: var(--line); }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--fg);
+      margin-top: -5.5px;
+      transition: background 0.15s ease;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:active::-webkit-slider-thumb { background: var(--accent); }
+
+    input[type="range"]::-moz-range-track { height: 1px; background: var(--line); }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border: none;
+      border-radius: 50%;
+      background: var(--fg);
+    }
+
+    input[type="range"]:hover::-moz-range-thumb { background: var(--accent); }
+
+    /* Polarity switch */
+    .row {
+      margin-top: 26px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .polarity {
+      display: flex;
+      align-items: baseline;
+      gap: 0.8em;
+      font-size: 0.72rem;
+      color: var(--subtler);
+    }
+
+    .pol-btn {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtler);
+      transition: color 0.2s ease;
+    }
+
+    .pol-btn:hover { color: var(--fg); }
+
+    .pol-btn.active { color: var(--accent); }
+
+    /* ─── Code panels ─── */
+    .code-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 28px 0 8px;
+    }
+
+    .code-label { font-size: 0.72rem; color: var(--subtler); }
+
+    .copy-btn {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: var(--subtle);
+      text-decoration: underline dotted;
+      text-decoration-color: var(--subtler);
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    .copy-btn:hover { color: var(--accent); }
+
+    .toast {
+      font-size: 0.72rem;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      margin-left: 0.8em;
+    }
+
+    .toast.is-visible { opacity: 1; }
+
+    pre.code {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      line-height: 1.6;
+      color: var(--subtle);
+      background: #100f0d;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    footer {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--subtler);
+      text-align: center;
+      padding: 56px 0 32px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <a href="../../">&larr; FFForma</a>
+    <p class="exp-eyebrow">FFForma Experiments · UI · 005</p>
+    <h1>Magnetic Avatar</h1>
+    <p class="exp-sub">Avatars with a magnetic field. Move the cursor close and watch them lean in.</p>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="preview" role="tab">Preview</button>
+    <button class="tab" data-tab="css" role="tab">CSS</button>
+    <button class="tab" data-tab="react" role="tab">React</button>
+  </div>
+
+  <!-- ─── Preview panel ─── -->
+  <div class="panel active" id="panel-preview">
+    <div class="stage" id="stage">
+      <div class="avatars" id="avatars"></div>
+      <p class="stage-hint" id="stageHint">( bring the cursor near )</p>
+    </div>
+
+    <div class="row">
+      <div class="polarity">
+        Polarity:
+        <button class="pol-btn active" data-pol="1">Attract</button>
+        <span aria-hidden="true">/</span>
+        <button class="pol-btn" data-pol="-1">Repel</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <label>Size <span class="val" data-val="size">72px</span></label>
+        <input type="range" data-param="size" min="48" max="120" step="4" value="72">
+      </div>
+      <div class="ctl">
+        <label>Strength <span class="val" data-val="strength">24px</span></label>
+        <input type="range" data-param="strength" min="0" max="60" step="2" value="24">
+      </div>
+      <div class="ctl">
+        <label>Field radius <span class="val" data-val="radius">140px</span></label>
+        <input type="range" data-param="radius" min="60" max="280" step="10" value="140">
+      </div>
+      <div class="ctl">
+        <label>Stiffness <span class="val" data-val="stiffness">0.12</span></label>
+        <input type="range" data-param="stiffness" min="0.03" max="0.3" step="0.01" value="0.12">
+      </div>
+      <div class="ctl">
+        <label>Damping <span class="val" data-val="damping">0.82</span></label>
+        <input type="range" data-param="damping" min="0.5" max="0.95" step="0.01" value="0.82">
+      </div>
+      <div class="ctl">
+        <label>Hover scale <span class="val" data-val="scale">1.12</span></label>
+        <input type="range" data-param="scale" min="1" max="1.4" step="0.02" value="1.12">
+      </div>
+      <div class="ctl">
+        <label>Parallax <span class="val" data-val="parallax">0.50</span></label>
+        <input type="range" data-param="parallax" min="0" max="1" step="0.05" value="0.5">
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CSS panel ─── -->
+  <div class="panel" id="panel-css">
+    <div class="code-head">
+      <span class="code-label">The look — pair it with the React hook for the physics.</span>
+      <span>
+        <button class="copy-btn" data-copy="css">Copy CSS</button>
+        <span class="toast" data-toast="css">Copied</span>
+      </span>
+    </div>
+    <pre class="code" id="cssCode"></pre>
+  </div>
+
+  <!-- ─── React panel ─── -->
+  <div class="panel" id="panel-react">
+    <div class="code-head">
+      <span class="code-label">Complete component — spring physics included, no dependencies.</span>
+      <span>
+        <button class="copy-btn" data-copy="react">Copy JSX</button>
+        <span class="toast" data-toast="react">Copied</span>
+      </span>
+    </div>
+    <pre class="code" id="reactCode"></pre>
+  </div>
+
+  <footer>Form Follows Function.</footer>
+</div>
+
+<script>
+  const AVATARS = [
+    { name: 'FFForma',    src: '../../img/FFForma1.jpg' },
+    { name: 'Combustion', src: '../../img/combustion1.jpg' },
+    { name: 'Pace',       src: '../../img/pace-9.jpg' },
+    { name: 'NewId',      src: '../../img/ff-id4.jpg' },
+    { name: 'Ember',      src: '../../img/combustion6.jpg' }
+  ];
+
+  const DEFAULTS = { size: 72, strength: 24, radius: 140, stiffness: 0.12, damping: 0.82, scale: 1.12, parallax: 0.5 };
+  const params = { ...DEFAULTS };
+  let polarity = 1; // 1 attract, -1 repel
+
+  const stage = document.getElementById('stage');
+  const avatarsEl = document.getElementById('avatars');
+  const stageHint = document.getElementById('stageHint');
+
+  // Build avatars
+  const nodes = AVATARS.map(a => {
+    const el = document.createElement('div');
+    el.className = 'm-avatar';
+    el.innerHTML =
+      '<div class="field"></div>' +
+      '<div class="photo"><img src="' + a.src + '" alt="' + a.name + '"></div>' +
+      '<div class="ring"></div>' +
+      '<span class="name">' + a.name + '</span>';
+    avatarsEl.appendChild(el);
+    return {
+      el,
+      img: el.querySelector('img'),
+      ring: el.querySelector('.ring'),
+      field: el.querySelector('.field'),
+      label: el.querySelector('.name'),
+      x: 0, y: 0, vx: 0, vy: 0,
+      tx: 0, ty: 0, prox: 0
+    };
+  });
+
+  // Cursor tracking (pointer events cover touch drags too)
+  const cursor = { x: -9999, y: -9999 };
+
+  stage.addEventListener('pointermove', (e) => {
+    cursor.x = e.clientX;
+    cursor.y = e.clientY;
+  });
+
+  stage.addEventListener('pointerleave', () => {
+    cursor.x = -9999;
+    cursor.y = -9999;
+  });
+
+  // Spring physics loop
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function tick() {
+    let captured = null;
+
+    nodes.forEach(n => {
+      const r = n.el.getBoundingClientRect();
+      // Rest center: remove current offset to keep the anchor stable
+      const cx = r.left + r.width / 2 - n.x;
+      const cy = r.top + r.height / 2 - n.y;
+      const dx = cursor.x - cx;
+      const dy = cursor.y - cy;
+      const dist = Math.hypot(dx, dy);
+
+      let prox = 0;
+      if (dist < params.radius && dist > 0.001) {
+        prox = 1 - dist / params.radius;
+        const pull = prox * params.strength * polarity;
+        n.tx = (dx / dist) * pull;
+        n.ty = (dy / dist) * pull;
+      } else {
+        n.tx = 0;
+        n.ty = 0;
+      }
+      n.prox = prox;
+
+      // Integrate spring
+      n.vx = (n.vx + (n.tx - n.x) * params.stiffness) * params.damping;
+      n.vy = (n.vy + (n.ty - n.y) * params.stiffness) * params.damping;
+      n.x += n.vx;
+      n.y += n.vy;
+
+      const s = 1 + prox * (params.scale - 1);
+      n.el.style.transform = 'translate(' + n.x.toFixed(2) + 'px, ' + n.y.toFixed(2) + 'px) scale(' + s.toFixed(3) + ')';
+      // The photo lags behind — depth
+      n.img.style.transform = 'translate(' + (-n.x * params.parallax).toFixed(2) + 'px, ' + (-n.y * params.parallax).toFixed(2) + 'px)';
+      n.ring.style.opacity = (prox * 0.9).toFixed(2);
+      n.field.style.opacity = prox > 0.55 ? '0.6' : '0';
+      n.label.style.opacity = prox > 0.55 ? '1' : '0';
+
+      if (prox > 0.55 && (!captured || prox > captured.prox)) captured = n;
+    });
+
+    stageHint.innerHTML = captured
+      ? '( <span class="on">' + captured.label.textContent + '</span> captured )'
+      : '( bring the cursor near )';
+
+    requestAnimationFrame(tick);
+  }
+
+  if (!reduced) requestAnimationFrame(tick);
+
+  // Controls
+  function fmt(k) {
+    if (k === 'size' || k === 'strength' || k === 'radius') return params[k] + 'px';
+    return Number(params[k]).toFixed(2);
+  }
+
+  function apply() {
+    document.documentElement.style.setProperty('--m-size', params.size + 'px');
+    document.querySelectorAll('.val').forEach(v => { v.textContent = fmt(v.dataset.val); });
+    document.getElementById('cssCode').textContent = cssCode();
+    document.getElementById('reactCode').textContent = reactCode();
+  }
+
+  document.querySelectorAll('input[type="range"]').forEach(input => {
+    input.addEventListener('input', () => {
+      params[input.dataset.param] = parseFloat(input.value);
+      apply();
+    });
+  });
+
+  document.querySelectorAll('.pol-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      polarity = parseInt(btn.dataset.pol, 10);
+      document.querySelectorAll('.pol-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      apply();
+    });
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Copy
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.dataset.copy === 'css'
+        ? document.getElementById('cssCode').textContent
+        : document.getElementById('reactCode').textContent;
+      const toastEl = document.querySelector('[data-toast="' + btn.dataset.copy + '"]');
+      navigator.clipboard.writeText(text).then(() => {
+        toastEl.classList.add('is-visible');
+        setTimeout(() => toastEl.classList.remove('is-visible'), 2000);
+      });
+    });
+  });
+
+  // ─── Generated code ───
+  function cssCode() {
+    return [
+      '.magnetic-avatar {',
+      '  position: relative;',
+      '  width: ' + params.size + 'px;',
+      '  aspect-ratio: 1;',
+      '  border-radius: 50%;',
+      '  cursor: pointer;',
+      '  will-change: transform; /* transform driven by the hook */',
+      '}',
+      '',
+      '.magnetic-avatar .photo {',
+      '  position: absolute;',
+      '  inset: 0;',
+      '  border-radius: 50%;',
+      '  overflow: hidden;',
+      '  border: 1px solid #262421;',
+      '}',
+      '',
+      '.magnetic-avatar .photo img {',
+      '  position: absolute;',
+      '  inset: -14%;             /* headroom for the parallax shift */',
+      '  width: 128%;',
+      '  height: 128%;',
+      '  object-fit: cover;',
+      '  will-change: transform;',
+      '}',
+      '',
+      '.magnetic-avatar .ring {',
+      '  position: absolute;',
+      '  inset: -5px;',
+      '  border-radius: 50%;',
+      '  border: 1px solid #c8ff00;',
+      '  opacity: 0;              /* set to proximity by the hook */',
+      '  pointer-events: none;',
+      '}'
+    ].join('\n');
+  }
+
+  function reactCode() {
+    return [
+      'import { useEffect, useRef } from "react";',
+      '',
+      'export function MagneticAvatar({',
+      '  src,',
+      '  alt = "",',
+      '  size = ' + params.size + ',',
+      '  strength = ' + params.strength + ',    // max pull, px',
+      '  radius = ' + params.radius + ',      // magnetic field radius, px',
+      '  stiffness = ' + params.stiffness + ',',
+      '  damping = ' + params.damping + ',',
+      '  hoverScale = ' + params.scale + ',',
+      '  parallax = ' + params.parallax + ',    // photo counter-shift (0-1)',
+      '  polarity = ' + polarity + ',      // 1 attracts, -1 repels',
+      '}) {',
+      '  const rootRef = useRef(null);',
+      '  const imgRef = useRef(null);',
+      '  const ringRef = useRef(null);',
+      '',
+      '  useEffect(() => {',
+      '    const root = rootRef.current;',
+      '    const img = imgRef.current;',
+      '    const ring = ringRef.current;',
+      '    const s = { x: 0, y: 0, vx: 0, vy: 0 };',
+      '    const cursor = { x: -9999, y: -9999 };',
+      '    let raf;',
+      '',
+      '    const onMove = (e) => { cursor.x = e.clientX; cursor.y = e.clientY; };',
+      '    const onLeave = () => { cursor.x = -9999; cursor.y = -9999; };',
+      '',
+      '    const tick = () => {',
+      '      const r = root.getBoundingClientRect();',
+      '      const cx = r.left + r.width / 2 - s.x;',
+      '      const cy = r.top + r.height / 2 - s.y;',
+      '      const dx = cursor.x - cx;',
+      '      const dy = cursor.y - cy;',
+      '      const dist = Math.hypot(dx, dy);',
+      '',
+      '      let tx = 0, ty = 0, prox = 0;',
+      '      if (dist < radius && dist > 0.001) {',
+      '        prox = 1 - dist / radius;',
+      '        const pull = prox * strength * polarity;',
+      '        tx = (dx / dist) * pull;',
+      '        ty = (dy / dist) * pull;',
+      '      }',
+      '',
+      '      s.vx = (s.vx + (tx - s.x) * stiffness) * damping;',
+      '      s.vy = (s.vy + (ty - s.y) * stiffness) * damping;',
+      '      s.x += s.vx;',
+      '      s.y += s.vy;',
+      '',
+      '      const scale = 1 + prox * (hoverScale - 1);',
+      '      root.style.transform = `translate(${s.x}px, ${s.y}px) scale(${scale})`;',
+      '      img.style.transform = `translate(${-s.x * parallax}px, ${-s.y * parallax}px)`;',
+      '      ring.style.opacity = prox * 0.9;',
+      '      raf = requestAnimationFrame(tick);',
+      '    };',
+      '',
+      '    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {',
+      '      window.addEventListener("pointermove", onMove);',
+      '      window.addEventListener("pointerleave", onLeave);',
+      '      raf = requestAnimationFrame(tick);',
+      '    }',
+      '',
+      '    return () => {',
+      '      window.removeEventListener("pointermove", onMove);',
+      '      window.removeEventListener("pointerleave", onLeave);',
+      '      cancelAnimationFrame(raf);',
+      '    };',
+      '  }, [strength, radius, stiffness, damping, hoverScale, parallax, polarity]);',
+      '',
+      '  return (',
+      '    <div ref={rootRef} className="magnetic-avatar" style={{ width: size }}>',
+      '      <div className="photo">',
+      '        <img ref={imgRef} src={src} alt={alt} />',
+      '      </div>',
+      '      <div ref={ringRef} className="ring" />',
+      '    </div>',
+      '  );',
+      '}'
+    ].join('\n');
+  }
+
+  apply();
+</script>
+
+</body>
+</html>
